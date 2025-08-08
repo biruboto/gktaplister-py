@@ -15,7 +15,7 @@
 ```
 This trinity of tools operates the digital signage tap lists at Ground Kontrol Classic Arcade in Portland, OR. The three parts are as follows:  
 
-**`red-side.html/blue-side.html`**:  
+**`red-side.py/blue-side.py`**:  
 These are the actual tap list displays for each side of the bar. In the original Taplister these were web pages, but they are now a Python application.
 **`red-side-editor.html/blue-side-editor.html`**:  
 These tools provide bartenders/managers with the ability to switch which beers are currently being displayed, as well as mark taps as sold out.  
