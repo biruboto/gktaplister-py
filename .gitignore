@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual env
+.venv/
+env/
+
+# VS Code
+.vscode/
+
+# Logs / junk
+*.log
+
+# Taplist caches / generated art
+logos/_cache/

@@ -1,0 +1,132 @@
+[
+    {
+        "id": "y6cfdc6z",
+        "brewery": "hopworks",
+        "title": "robot panda",
+        "city": "portland",
+        "state": "or",
+        "style": "hazy ipa",
+        "abv": "6.2",
+        "logoPath": "hopworks.robotpanda.svg"
+    },
+    {
+        "id": "cka7ifts",
+        "brewery": "portland cider co",
+        "title": "pacific berry",
+        "city": "portland",
+        "state": "or",
+        "style": "hard apple & berry cider",
+        "abv": "6.5",
+        "logoPath": "portlandcider.svg"
+    },
+    {
+        "id": "zca6ix8n",
+        "brewery": "gigantic",
+        "title": "sassy pony pale test",
+        "city": "portland",
+        "state": "or",
+        "style": "american pale ale",
+        "abv": "5.8",
+        "logoPath": "gigantic.svg"
+    },
+    {
+        "id": "0fbc3j77",
+        "brewery": "2 towns",
+        "title": "brightcider",
+        "city": "corvallis",
+        "state": "or",
+        "style": "hard apple cider",
+        "abv": "6.0",
+        "logoPath": "2towns.svg"
+    },
+    {
+        "id": "p7o6yl3m",
+        "brewery": "rogue",
+        "title": "honey kolsch",
+        "city": "newport",
+        "state": "or",
+        "style": "kolsch",
+        "abv": "5.0",
+        "logoPath": "rogue.svg"
+    },
+    {
+        "id": "003k1pzh",
+        "brewery": "seekout",
+        "title": "raspberry lemon",
+        "city": "corvallis",
+        "state": "or",
+        "style": "hard seltzer",
+        "abv": "5.0",
+        "logoPath": "seekout.svg"
+    },
+    {
+        "id": "q97v6qn4",
+        "brewery": "upright",
+        "title": "engelberg pilsner",
+        "city": "portland",
+        "state": "or",
+        "style": "german pilsner",
+        "abv": "4.6",
+        "logoPath": "upright.svg"
+    },
+    {
+        "id": "t6hebfc6",
+        "brewery": "ablis",
+        "title": "cran blood orange cbd",
+        "city": "bend",
+        "state": "or",
+        "style": "sparkling cbd soda",
+        "abv": "0.0",
+        "logoPath": "ablis.svg"
+    },
+    {
+        "id": "vjkdpxbs",
+        "brewery": "level",
+        "title": "game on! ipa",
+        "city": "portland",
+        "state": "or",
+        "style": "american ipa",
+        "abv": "6.5",
+        "logoPath": "level.svg"
+    },
+    {
+        "id": "btf1yeku",
+        "brewery": "pfriem",
+        "title": "hazy ipa",
+        "city": "hood river",
+        "state": "or",
+        "style": "hazy ipa",
+        "abv": "6.8",
+        "logoPath": "pfriem.svg"
+    },
+    {
+        "id": "z1797mna",
+        "brewery": "hopworks",
+        "title": "tree frog",
+        "city": "portland",
+        "state": "or",
+        "style": "organic pale ale",
+        "abv": "5.4",
+        "logoPath": "hopworks.svg"
+    },
+    {
+        "id": "iuj2fssp",
+        "brewery": "gigantic",
+        "title": "long play stout",
+        "city": "portland",
+        "state": "or",
+        "style": "american stout",
+        "abv": "5.7",
+        "logoPath": "gigantic.svg"
+    },
+    {
+        "id": "1fjidozb",
+        "brewery": "happy",
+        "title": "gilmore",
+        "city": "casper",
+        "state": "wy",
+        "style": "tootsie roll",
+        "abv": "3.4",
+        "logoPath": "widmer.svg"
+    }
+]

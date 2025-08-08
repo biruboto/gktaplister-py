@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Red Side Taplist Editor</title>
+  <style>
+    @font-face {
+  font-family: 'MagistralBold';
+  src: url('./fonts/MagistralBold.otf') format('opentype');
+}
+    body {
+      
+      font-family: 'MagistralBold';
+      background-color: #0d001a;
+      max-width: 900px;
+      margin: 40px auto;
+    }
+    h1 {
+      text-align: center;
+    }
+    .logo-container {
+    text-align: center;
+    margin: 20px 0;
+    }
+    .logo-img {
+    max-width: 600px;
+    height: auto;
+    }
+    #dropdowns-container.grid {
+  display: grid;
+  grid-template-columns: auto auto auto auto;
+  justify-content: center;
+  gap: 1.5em 2em;
+}
+
+.theme-select-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 20px auto 20px;
+  gap: 0.5em;
+}
+
+.theme-select-wrapper label {
+  color: #f5f5f5;
+  font-size: 1.1em;
+  letter-spacing: 1px;
+}
+
+
+select {
+  width: 100%;
+  min-width: 300px;
+  max-width: 400px;
+  padding: 12px 16px;
+  font-size: 1rem;
+  border-radius: 8px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: #111;
+  color: #f5f5f5;
+  border: 2px solid #555;
+  font-family: 'MagistralBold', sans-serif;
+  background-image: url('data:image/svg+xml;charset=US-ASCII,<svg fill="white" height="24" viewBox="0 0 24 24" width="32" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px 16px;
+}
+
+input[type="checkbox"] {
+  width: 32px;
+  height: 32px;
+  accent-color: #00d8ff;
+  cursor: pointer;
+}
+
+select:focus {
+  outline: none;
+  border-color: #00d8ff;
+  box-shadow: 0 0 5px #00d8ff66;
+}
+
+.beer-select-group {
+  width: 100%;
+  text-align: center;
+}
+
+    select {
+      width: 100%;
+      padding: 8px;
+      font-size: 1em;
+    }
+    button[type="submit"] {
+  background-color: #6cbbca;
+  color: #57175a;
+  border: none;
+  width: 100%;
+  max-width: 300px;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 1.5rem;
+  font-weight: bold;
+  font-family: 'MagistralBold', sans-serif;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 0 10px #00d8ff55;
+  width: 100%;
+  margin: 20px auto 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: block;
+}
+
+button[type="submit"] img {
+  width: auto;
+  vertical-align: -.05em;   /* Fine-tune up/down if needed */
+  margin-right: 0.5em;
+}
+
+
+button[type="submit"]:hover {
+  box-shadow: 0 0 16px #00faff99, 0 0 32px #00faff44;
+}
+
+button[type="submit"]:active {
+  transform: scale(0.97);
+}
+
+      @keyframes pulseGlow {
+  0% {
+    filter: drop-shadow(0 0 0px #00faff);
+  }
+  50% {
+    filter: drop-shadow(0 0 10px #00faff);
+  }
+  100% {
+    filter: drop-shadow(0 0 0px #00faff);
+  }
+}
+
+.pulse-glow {
+  animation: pulseGlow 5s infinite ease-in-out;
+}
+
+  </style>
+</head>
+<body>
+  <div class="logo-container">
+  <img src="./images/rededitor.png" alt="Taplist Logo" class="logo-img pulse-glow">
+</div>
+  <form id="editor-form">
+    <div id="dropdowns-container" class="grid"></div>
+<!-- I had a theming engine implemented and the ability for bartenders to change themes, which was vetoed.
+ Rather than rip it all out I have just commented it out here and you can uncomment to restore this functionality.
+     <div class="theme-select-wrapper">
+    <label for="themeSelect">CHANGE THEME:</label>
+    <select id="themeSelect">
+       <option value="red side">red side</option>
+       <option value="blue side">blue side</option>
+       <option value="hyper">hyper</option>
+       <option value="pinku">pinku</option>
+       <option value="lemon lime">lemon lime</option>
+       <option value="evening pastel">evening pastel</option>
+       <option value="vania">vania</option>
+    </select>
+</div> -->
+    <button type="submit">💾 Save Changes</button>
+  </form>
+
+ <script>
+  let masterList = [];
+  let currentList = [];
+  let currentData = {}; // full JSON object
+
+  function formatBeerLabel(beer) {
+    return `${beer.brewery} ${beer.title}`;
+  }
+
+  Promise.all([
+    fetch('json/beer-database.json').then(res => res.json()),
+    fetch('json/red-beers.json').then(res => res.json())
+  ])
+  .then(([database, taplist]) => {
+    masterList = database.sort((a, b) => {
+      const aName = `${a.brewery} ${a.title}`.toLowerCase();
+      const bName = `${b.brewery} ${b.title}`.toLowerCase();
+      return aName.localeCompare(bName);
+    });
+
+    currentData = taplist;
+    currentList = taplist.beers; // ✅ point to the beers array
+
+    // Set the theme dropdown **This part is also commented out to remove theme functionality. Uncomment to restore.
+  /*   const themeSelect = document.getElementById('themeSelect');
+    if (themeSelect && currentData.theme) {
+      themeSelect.value = currentData.theme;
+    } */
+
+    const container = document.getElementById('dropdowns-container');
+
+for (let i = 0; i < 12; i++) {
+  const beer = currentList[i] || {};
+  const select = document.createElement('select');
+  select.name = `beer-${i}`;
+  select.required = true;
+
+  masterList.forEach(optionBeer => {
+    const option = document.createElement('option');
+    option.value = optionBeer.id; // Use id as value!
+    option.textContent = formatBeerLabel(optionBeer);
+
+    if (beer.id && optionBeer.id === beer.id) {
+      option.selected = true;
+    }
+
+    select.appendChild(option);
+  });
+
+  // SOLD OUT checkbox
+  const checkboxLabel = document.createElement('label');
+  checkboxLabel.style.display = 'flex';
+  checkboxLabel.style.alignItems = 'center';
+  checkboxLabel.style.justifyContent = 'center';
+  checkboxLabel.style.fontSize = '0.9em';
+  checkboxLabel.style.color = '#f5f5f5';
+  checkboxLabel.style.gap = '0.4em';
+
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.name = `soldout-${i}`;
+  checkbox.checked = beer.soldOut === true;
+
+  checkboxLabel.appendChild(checkbox);
+  checkboxLabel.appendChild(document.createTextNode('SOLD OUT?'));
+
+  container.appendChild(select);
+  container.appendChild(checkboxLabel);
+}
+  });
+
+  // Save handler
+  document.getElementById('editor-form').addEventListener('submit', e => {
+    e.preventDefault();
+
+   const selects = document.querySelectorAll('select');
+const newBeers = Array.from(selects).map((select, i) => {
+  const beerId = select.value; // This is the id string!
+  const beer = masterList.find(b => b.id === beerId);
+
+  if (!beer) return null;
+
+  const checkbox = document.querySelector(`input[name="soldout-${i}"]`);
+  return {
+    id: beer.id,
+    soldOut: checkbox?.checked || false
+  };
+}).filter(Boolean);
+
+currentData.beers = newBeers;
+
+/* Uncomment this line to restore theming.
+    currentData.theme = document.getElementById('themeSelect').value; */
+    currentData.refreshToken = Math.random().toString(36).slice(2);
+
+    fetch('php/save-red-taplist.php', {
+      method: 'POST',
+      headers:
+       { 'Content-Type': 'application/json' },
+      body: JSON.stringify(currentData, null, 2)
+    })
+    .then(res => {
+      if (!res.ok) throw new Error("Save failed");
+
+      const statusMsg = document.getElementById('save-status');
+      statusMsg.style.display = 'block';
+      statusMsg.textContent = 'Taplist saved successfully!';
+      statusMsg.style.opacity = '1';
+
+      setTimeout(() => {
+        statusMsg.style.transition = 'opacity 5s ease';
+        statusMsg.style.opacity = '0';
+      }, 3000);
+    })
+    .catch(err => {
+      console.error(err);
+      alert("Failed to save taplist.");
+    });
+  });
+</script>
+
+  <p id="save-status" style="display: none; text-align: center; color: #B07BAC; font-weight: bold;">
+  Taplist saved successfully!
+</p>
+
+</body>
+</html>

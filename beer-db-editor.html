@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GK Beer DB Editor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="css/dbeditor.css">
+</head>
+<body>
+  <div class="editor-header">
+  <img src="./images/dbeditorlogo.png" alt="Beer Database Editor" class="editor-logo">
+</div>
+  <div class="status" id="status"></div>
+
+<div class="dropdown-center">
+  <select id="beerDropdown"> ... </select>
+   <button type="button" id="backupDbBtn" class="backup-btn">💾 backup database</button>
+</div>
+
+<div id="beerCard" class="beer-card">
+  <form id="beerForm" class="beer-fields" autocomplete="off">
+  <div class="beer-card-grid">
+    <!-- Row 1 -->
+    <label>brewery
+      <input id="brewery" autocomplete="off">
+    </label>
+    <label>beer
+      <input id="title" autocomplete="off">
+    </label>
+    <div class="logo-cell" rowspan="3">
+      <div class="logo-preview-square">
+        <img id="logoPreview" src="" alt="Brewery logo" style="display:none;">
+      </div>
+    </div>
+    <!-- Row 2 -->
+    <label>style
+      <input id="style" autocomplete="off">
+    </label>
+    <label>abv
+      <input id="abv" autocomplete="off" pattern="^\d{1,2}\.\d$" title="Format: '6.5' or '10.2'" maxlength="4" inputmode="decimal">
+    </label>
+    <!-- (Logo still in col 3) -->
+    <!-- Row 3 -->
+    <label>city
+      <input id="city" autocomplete="off">
+    </label>
+    <label class="state-label">state
+      <input id="state" autocomplete="off">
+    </label>
+    <div class="logo-dropdown-under">
+      <label>logo
+        <select id="logoPath"></select>
+      </label>
+    </div>
+  </div>
+  <!-- Animation space -->
+<div id="beerCardAnimationArea" style="min-height:200px; margin:1.5em 0;">
+  <canvas id="tapperAnim" width="290" height="100" style="background:#203c56;display:block;margin:0 auto;border-radius:10px;"></canvas>
+</div>
+
+  <div class="button-bar">
+    <button type="submit" class="save">Save</button>
+    <button type="button" class="delete" id="deleteBeer">Delete</button>
+    <button type="button" class="cancel" id="backToList">Cancel</button>
+  </div>
+</form>
+</div>
+
+  <table id="beerTable" class="beer-table" style="display:none;">
+    <thead>
+      <tr>
+        <th>brewery</th><th>name</th><th>city</th><th>st</th>
+        <th>style</th><th>abv</th><th>logo</th><th>delete</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <button type="button" id="saveAllBtn" style="display:none; margin: 1em auto 0 auto; display:block;">Save All</button>
+
+
+<script>
+const apiURL = "php/beer-db-api.php";
+const logoListURL = apiURL + "?logos";
+const fields = ["brewery","title","city","state","style","abv","logoPath"];
+let beers = [];
+let logoFiles = [];
+let currentBeerIndex = null;
+
+const beerDropdown = document.getElementById('beerDropdown');
+const beerCard = document.getElementById('beerCard');
+const beerForm = document.getElementById('beerForm');
+const logoPreview = document.getElementById('logoPreview');
+const statusDiv = document.getElementById('status');
+const tbody = document.querySelector("#beerTable tbody");
+const beerTable = document.getElementById('beerTable');
+const backToListBtn = document.getElementById('backToList');
+
+function generateBeerId() {
+  // 8 chars: a-z, 0-9
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let id = '';
+  for (let i = 0; i < 8; i++) id += chars.charAt(Math.floor(Math.random() * chars.length));
+  return id;
+}
+
+// 1. Load logos, then beers
+Promise.all([
+  fetch(logoListURL).then(r=>r.json()),
+  fetch(apiURL).then(r=>r.json())
+]).then(([logos, beerData]) => {
+  logoFiles = logos;
+  beers = beerData.map(b => {
+  if (!b.id) b.id = generateBeerId();
+  return b;
+});
+  populateDropdown();
+  populateLogoDropdown();
+  buildBeerTable();
+  // Start with nothing selected
+  beerDropdown.value = "";
+  beerDropdown.onchange();
+});
+
+// Populate the dropdown
+function populateDropdown() {
+  beerDropdown.innerHTML = `
+  <option value="">(choose a beer…)</option>
+  <option value="-1">🍻 = show all beers =</option>
+  <option value="-2">🍺 = add new beer =</option>
+`;
+// Make a *copy* so you don't alter the main array:
+  let sortedBeers = beers
+    .map((beer, idx) => ({ beer, idx })) // keep original index!
+    .sort((a, b) => {
+      // Sort by brewery, then title, both case-insensitive:
+      const aStr = (a.beer.brewery || "") + " " + (a.beer.title || "");
+      const bStr = (b.beer.brewery || "") + " " + (b.beer.title || "");
+      return aStr.localeCompare(bStr, undefined, { sensitivity: 'base' });
+    });
+
+  sortedBeers.forEach(({ beer, idx }) => {
+    let label = `${beer.brewery || "???"} ${beer.title || "???"}`;
+    beerDropdown.innerHTML += `<option value="${idx}">${label}</option>`;
+  });
+}
+
+// Populate the logo select dropdown
+function populateLogoDropdown(selected = "") {
+  // Clean selected value: only filename
+  selected = selected.replace(/^.*[\\/]/, ""); 
+  const logoSel = document.getElementById('logoPath');
+  logoSel.innerHTML = `<option value="">= select logo =</option>`;
+  logoFiles.forEach(path => {
+    const filename = path.replace(/^.*[\\/]/, "");
+    logoSel.innerHTML += `<option value="${filename}" ${selected===filename?"selected":""}>${filename}</option>`;
+  });
+}
+
+// Build the table for show-all-beers view
+function buildBeerTable() {
+  tbody.innerHTML = "";
+  beers.forEach((beer, idx) => {
+    const tr = document.createElement('tr');
+    tr.dataset.id = beer.id || ""; // <-- preserves id even if not visible in the table!
+    fields.forEach(f => {
+      const td = document.createElement('td');
+      if (f === "logoPath") {
+        td.innerHTML = makeLogoDropdownTable(beer[f]);
+      } else {
+        let inputClass = "beer-input";
+        if (f === "state" || f === "abv") inputClass += " beer-short";
+        if (f === "state") inputClass += " beer-state";
+        if (f === "abv") inputClass += " beer-abv";
+        td.innerHTML = `<input class="${inputClass}" value="${beer[f] ? beer[f] : ""}" placeholder="${f}">`;
+      }
+      tr.appendChild(td);
+    });
+    // Delete button
+    const td = document.createElement('td');
+    td.innerHTML = `<button type="button" class="delete-row" data-id="${beer.id}">X</button>`;
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  });
+}
+
+function showBlankBeerCard() {
+  currentBeerIndex = null;
+  fields.forEach(f => {
+    if (f === "logoPath") {
+      populateLogoDropdown();
+      logoPreview.src = "";
+      logoPreview.style.display = "none";
+    } else {
+      document.getElementById(f).value = "";
+    }
+  });
+// Hide the delete button
+  document.getElementById('deleteBeer').style.display = "none";
+  beerCard.style.display = "block";
+}
+
+// Helper for logo dropdown inside table
+function makeLogoDropdownTable(selected) {
+  let html = `<select class="beer-input">`;
+  html += `<option value="">-- Select Logo --</option>`;
+  logoFiles.forEach(path => {
+  const filename = path.replace(/^.*[\\/]/, "");
+  html += `<option value="${filename}" ${selected===filename?"selected":""}>${filename}</option>`;
+});
+  html += `</select>`;
+  return html;
+}
+
+// Dropdown filtering logic
+beerDropdown.onchange = () => {
+  if (beerDropdown.value === "") {
+    beerCard.style.display = "none";
+    beerTable.style.display = "none";
+    document.getElementById('saveAllBtn').style.display = "none";
+  } else if (beerDropdown.value === "-1") {
+    beerCard.style.display = "none";
+    beerTable.style.display = "";
+    document.getElementById('saveAllBtn').style.display = "block";
+    buildBeerTable();
+  } else if (beerDropdown.value === "-2") {
+    // Add new beer!
+    beerTable.style.display = "none";
+    document.getElementById('saveAllBtn').style.display = "none";
+    showBlankBeerCard();
+  } else {
+    beerTable.style.display = "none";
+    document.getElementById('saveAllBtn').style.display = "none";
+    fillBeerCard(Number(beerDropdown.value));
+  }
+};
+
+// Fill the beer card
+function fillBeerCard(idx) {
+  currentBeerIndex = idx;
+  let beer = beers[idx];
+  fields.forEach(f => {
+    if (f === "logoPath") {
+      populateLogoDropdown(beer[f]);
+      // Show logo preview if present
+      if (beer[f]) {
+        logoPreview.src = `/logos/${beer[f]}`;
+        logoPreview.style.display = "";
+      } else {
+        logoPreview.style.display = "none";
+      }
+    } else {
+      document.getElementById(f).value = beer[f] || "";
+    }
+  });
+  // Show the delete button
+  document.getElementById('deleteBeer').style.display = "";
+  beerCard.style.display = "block";
+}
+
+// Handle logo dropdown change (update preview)
+document.getElementById('logoPath').onchange = function() {
+  const path = this.value;
+  logoPreview.src = path ? `/logos/${path.replace(/^.*[\\/]/, "")}` : "";
+  logoPreview.style.display = path ? "" : "none";
+};
+
+
+// Handle "back to list" (reset to no selection)
+backToListBtn.onclick = () => {
+  beerDropdown.value = "";
+  beerDropdown.onchange();
+};
+
+// Save handler
+beerForm.onsubmit = async function(e) {
+  e.preventDefault();
+  let beer = {};
+  fields.forEach(f => {
+    beer[f] = document.getElementById(f).value.trim();
+  });
+
+  if (currentBeerIndex === null) {
+    // ADD NEW BEER MODE: append to end of beers array
+    beer.id = generateBeerId();
+    beers.push(beer);
+    currentBeerIndex = beers.length - 1;
+  } else {
+    // EDIT MODE: preserve existing id!
+    beer.id = beers[currentBeerIndex].id; // <---- This line is key!
+    beers[currentBeerIndex] = beer;
+  }
+
+  // Save to backend
+  const res = await fetch(apiURL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(beers)
+  });
+
+  if (res.ok) {
+    statusDiv.textContent = "Saved!";
+    startBeerSlide();   // <--- THIS TRIGGERS THE ANIMATION!
+    setTimeout(() => statusDiv.textContent = "", 3000);
+    populateDropdown();
+    buildBeerTable();
+
+    // Only switch to "show all" if that's what the user was doing!
+    // Otherwise, stay on current beer card
+    beerDropdown.value = currentBeerIndex;
+    beerDropdown.onchange();
+  }
+};
+
+// Delete single beer handler
+document.getElementById('deleteBeer').onclick = async function() {
+  if (!confirm("Delete this beer?")) return;
+  beers.splice(currentBeerIndex, 1);
+  const res = await fetch(apiURL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(beers)
+  });
+  if (res.ok) {
+    statusDiv.textContent = "Deleted!";
+    setTimeout(() => statusDiv.textContent = "", 2000);
+    populateDropdown();
+    beerDropdown.value = "";
+    beerDropdown.onchange();
+    buildBeerTable();
+  } else {
+    statusDiv.textContent = "Error deleting!";
+  }
+};
+
+// Delete from table (show-all mode)
+tbody.onclick = async function(e) {
+  if (!e.target.classList.contains('delete-row')) return;
+  let beerId = e.target.getAttribute('data-id');
+  if (!confirm("Delete this beer?")) return;
+  beers = beers.filter(b => b.id !== beerId);
+  const res = await fetch(apiURL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(beers)
+  });
+  if (res.ok) {
+    statusDiv.textContent = "Deleted!";
+    setTimeout(() => statusDiv.textContent = "", 2000);
+    populateDropdown();
+    beerDropdown.value = "-1";
+    beerDropdown.onchange();
+    buildBeerTable();
+  } else {
+    statusDiv.textContent = "Error deleting!";
+  }
+};
+
+document.getElementById('backupDbBtn').onclick = async function() {
+  statusDiv.textContent = 'Backing up...';
+  const res = await fetch('php/beer-db-api.php?backup', { method: 'POST' });
+  if (res.ok) {
+    const txt = await res.text();
+    statusDiv.textContent = 'Backup created: ' + txt;
+    setTimeout(() => { statusDiv.textContent = ""; }, 3000);
+  } else {
+    statusDiv.textContent = 'Error creating backup!';
+    setTimeout(() => { statusDiv.textContent = ""; }, 3000);
+  }
+};
+
+document.getElementById('saveAllBtn').onclick = async function() {
+  // Rebuild beers array from table rows
+  let newBeers = [];
+  tbody.querySelectorAll('tr').forEach(tr => {
+    let beer = {};
+    // ⬇️ Always keep the ID from the row if present
+    beer.id = tr.dataset.id || generateBeerId();
+    fields.forEach((f, i) => {
+      if (f === "logoPath") {
+        beer[f] = tr.children[i].querySelector('select').value.trim();
+      } else {
+        beer[f] = tr.children[i].querySelector('input').value.trim();
+      }
+    });
+    // Only add non-empty beers
+    if (Object.values(beer).some(val => val)) newBeers.push(beer);
+  });
+  beers = newBeers;
+
+  // POST to API
+  const res = await fetch(apiURL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(beers)
+  });
+  if (res.ok) {
+    statusDiv.textContent = "Saved!";
+    startBeerSlide && startBeerSlide(); // animation
+    setTimeout(() => statusDiv.textContent = "", 3000);
+    populateDropdown();
+    buildBeerTable();
+    beerDropdown.value = "-1"; // stay on table view
+    // DO NOT call fillBeerCard(currentBeerIndex) here!
+    // DO NOT call beerDropdown.onchange()!
+  } else {
+    statusDiv.textContent = "Error saving!";
+  }
+};
+
+const canvas = document.getElementById('tapperAnim');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+// Asset filenames
+const barImg = new Image();
+barImg.src = './sprites/bar.png'; // 290x96
+const bartenderImg = new Image();
+bartenderImg.src = './sprites/bartender.png'; // 2 rows x 7 cols, 73x85 each (511x170)
+const mugImg = new Image();
+mugImg.src = './sprites/mug.png'; // 2x 25x32
+const savedImg = new Image();
+savedImg.src = './sprites/saved.png'; // 26x24
+
+let animState = 'idle'; // 'idle', 'filling', 'pushing', 'sliding', 'done'
+let animFrame = 0;      // For fill frames
+let mugX = null;
+let mugAnimFrame = 0; // 0 or 1
+let mugAnimTimer = 0;
+const mugAnimDelay = 100; // ms per mug frame (adjust for speed)
+let stateTimer = 0;     // ms into current state
+let mugSlideDuration = 900; // ms (how long the mug takes to cross the bar)
+let mugStartX, mugEndX; // actual pixel positions (calculated on state change)
+
+let idleFrames = [12, 13];
+let currentIdle = 0;
+let idleTime = 0;
+const idleDelay = 500; // ms
+
+function startBeerSlide() {
+  animState = 'filling';
+  animFrame = 0;
+  stateTimer = 0;
+  mugX = null;
+}
+
+function render(ts) {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drawBar();
+
+  if (animState === "done") {
+  // Draw bartender in idle (cycling)
+  drawBartender(idleFrames[currentIdle]);
+  // Draw saved overlay on top
+  ctx.drawImage(savedImg, canvas.width/2 - 127, canvas.height - 84);
+  return;
+}
+
+  if (animState === "filling") {
+    drawBartender(animFrame);
+  } else if (animState === "pushing" || animState === "sliding") {
+    drawBartender(11); // push frame!
+    // Mug slides during 'sliding'
+    if (animState === "sliding" && mugX !== null) {
+  const barH = 90;
+  const mugY = canvas.height - barH - 8 + 22;
+
+  // Set the slot X position for the computer
+  const slotX = 52; // Tweak as needed!
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(slotX, 0, canvas.width - slotX, canvas.height);
+  ctx.clip();
+
+  ctx.drawImage(
+    mugImg,
+    mugAnimFrame * 25, 0, 25, 32,  // source X, Y, W, H
+    mugX, mugY, 25, 32             // dest X, Y, W, H
+  );
+  ctx.restore();
+    }
+  } else {
+    // Idle
+    drawBartender(idleFrames[currentIdle]);
+  }
+}
+
+function animLoop(ts) {
+  if (!animLoop.last) animLoop.last = ts;
+  let dt = ts - animLoop.last; // ms since last frame
+
+  // -- Idle animation (always time-based) --
+  if (animState === 'idle' || animState === 'done') {
+  idleTime += dt;
+  if (idleTime > idleDelay) {
+    idleTime = 0;
+    currentIdle = (currentIdle + 1) % idleFrames.length;
+  }
+}
+
+  // -- Animation state machine --
+  if (animState === 'filling') {
+    stateTimer += dt;
+    if (stateTimer > 70) { // 70 ms per frame
+      animFrame++;
+      stateTimer -= 70;
+      if (animFrame > 9) { // done filling, start push
+        animState = 'pushing';
+        stateTimer = 0;
+      }
+    }
+  } else if (animState === 'pushing') {
+    stateTimer += dt;
+    if (stateTimer > 20) { // show push frame for 200ms
+      animState = 'sliding';
+      stateTimer = 0;
+
+      // -- Mug slide: setup start/end positions (right to left) --
+      const barW = 290;
+      const barX = Math.round((canvas.width - barW) / 2);
+      mugStartX = barX + barW - 120; // right end (tweak offset for realism)
+      mugEndX = barX + 26;           // left end (tweak as needed)
+      mugX = mugStartX;
+    }
+  } else if (animState === 'sliding') {
+    stateTimer += dt;
+     // -- Mug sprite animation --
+  mugAnimTimer += dt;
+  if (mugAnimTimer > mugAnimDelay) {
+    mugAnimFrame = (mugAnimFrame + 1) % 2; // toggle between 0 and 1
+    mugAnimTimer -= mugAnimDelay;
+  }
+    // Mug slides from right to left in a fixed duration (time-based interpolation)
+    if (stateTimer < mugSlideDuration) {
+      let t = stateTimer / mugSlideDuration; // [0, 1]
+      mugX = mugStartX + (mugEndX - mugStartX) * t;
+    } else {
+      mugX = mugEndX;
+      animState = 'done';
+      setTimeout(() => {
+        animState = 'idle';
+        mugX = null;
+      }, 3000); // how long save stays on computer screen
+    }
+  }
+
+  render(ts);
+  animLoop.last = ts;
+  requestAnimationFrame(animLoop);
+}
+
+function drawCentered(img, w, h, yOff=0) {
+  ctx.drawImage(img,
+    (canvas.width - w) / 2,
+    (canvas.height - h) / 2 + yOff,
+    w, h);
+}
+
+function drawBartender(frame) {
+  const frameW = 73, frameH = 85, cols = 7;
+  const sx = (frame % cols) * frameW;
+  const sy = Math.floor(frame / cols) * frameH;
+  // Center over bar (try these, tweak as needed)
+  const x = Math.round((canvas.width - frameW) / 2) + 74;
+  const y = Math.round((canvas.height - frameH) / 2) + 5; // Nudge upward, tweak this!
+  ctx.drawImage(bartenderImg, sx, sy, frameW, frameH, x, y, frameW, frameH);
+}
+
+function drawBar() {
+  // Center bar at bottom
+  const barW = 290, barH = 96;
+  const x = Math.round((canvas.width - barW) / 2);
+  const y = canvas.height - barH - 4; // slight margin
+  ctx.drawImage(barImg, x, y, barW, barH);
+}
+
+// Wait for images, then go!
+let loaded = 0;
+[barImg, bartenderImg, mugImg, savedImg].forEach(img => {
+  img.onload = () => { loaded++; if (loaded === 4) animLoop(0); }
+});
+
+</script>
+</body>
+</html>

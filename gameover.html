@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GAME OVER – See You Next Time!</title>
+  <style>
+    html, body {
+      height: 100%; margin: 0; padding: 0; overflow: hidden;
+      background: #000;
+    }
+    canvas {
+      display: block;
+      width: 100vw; height: 100vh;
+      background: #000;
+    }
+  </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// ----- CONFIG -----
+const W = 1920, H = 1080;
+const SPRITES_DIR = 'sprites/';
+
+// SCALE
+const GAME_OVER_SCALE = 20;      // Tweak for "GAME"/"OVER" size
+const GO_LETTER_GAP = 16; // in pixels; increase this to get more space between GAME/OVER letters
+const SEE_YOU_SCALE = 5;         // Tweak for "SEE YOU NEXT TIME!" size
+const PLANET_SCALE = 4; // <--- Tweak this!
+const PLANET_W = 550 * PLANET_SCALE;
+const PLANET_H = 230 * PLANET_SCALE;
+const PLANET_Y_START = H + 200;
+const PLANET_BASE_Y_END = H - 260;
+const PLANET_Y_END = PLANET_BASE_Y_END - (PLANET_H - 400);
+const PLANET_RISE_DURATION = 200000; // ms
+
+
+// Letter dimensions
+const GO_LETTER_W = 8 * GAME_OVER_SCALE;
+const GO_LETTER_H = 8 * GAME_OVER_SCALE;
+const SY_LETTER_W = 8 * SEE_YOU_SCALE;
+const SY_LETTER_H = 8 * SEE_YOU_SCALE;
+
+// "GAME" and "OVER" sprite order (all lowercase!)
+const gameRowOrder = ['gog.png','goa.png','gom.png','goe.png'];
+const overRowOrder = ['goo.png','gov.png','goe.png','gor.png'];
+
+// "SEE YOU NEXT TIME!" (with your sy(space).png for space, all lowercase)
+const seeYouOrder = [
+  'sys.png','sye.png','sye.png','syspace.png','syy.png','syo.png','syu.png','syspace.png',
+  'syn.png','sye.png','syx.png','syt.png','syspace.png','sytc.png','syi.png','sym.png','sye.png','syex.png'
+];
+
+// Starfield
+const STAR_COUNT = 90;
+
+// ----- UTILS -----
+function lerp(a, b, t) { return a + (b - a) * t; }
+function loadImage(src) {
+  return new Promise(res => {
+    const img = new Image();
+    img.onload = () => res(img);
+    img.src = src;
+  });
+}
+
+// ----- LOAD ALL SPRITES -----
+async function loadSprites() {
+  const gameRowSprites = await Promise.all(gameRowOrder.map(f => loadImage(SPRITES_DIR + f)));
+  const overRowSprites = await Promise.all(overRowOrder.map(f => loadImage(SPRITES_DIR + f)));
+  const seeYouSprites = await Promise.all(seeYouOrder.map(f => loadImage(SPRITES_DIR + f)));
+  const planet = await loadImage(SPRITES_DIR + 'planet.png');
+  return {gameRowSprites, overRowSprites, seeYouSprites, planet};
+}
+
+// ----- STARFIELD -----
+function makeStarfield() {
+  const palette = [
+    {color: "#fff", alpha: 0.95},
+    {color: "#88e1ff", alpha: 0.7},
+    {color: "#ffe8ad", alpha: 0.85},
+    {color: "#f1aaff", alpha: 0.65},
+    {color: "#aafff1", alpha: 0.5}
+  ];
+  let stars = [];
+  for (let i = 0; i < STAR_COUNT; i++) {
+    const {color, alpha} = palette[Math.floor(Math.random() * palette.length)];
+    stars.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      z: Math.random() * 1.5 + 0.5,
+      tw: Math.random() * Math.PI * 2,
+      color: color,
+      alpha: alpha * (0.7 + Math.random() * 0.5)
+    });
+  }
+  return stars;
+}
+
+
+function hexToRgba(hex, alpha) {
+  const c = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!c) return hex;
+  return `rgba(${parseInt(c[1],16)},${parseInt(c[2],16)},${parseInt(c[3],16)},${alpha})`;
+}
+
+function drawStarfield(ctx, stars, t) {
+  ctx.save();
+  for (const s of stars) {
+    // Gently fall
+    s.y += 0.04 * s.z; // tweak this for speed
+
+    // Wrap around vertically
+    if (s.y > H) s.y -= H;
+
+    let twinkle = 0.6 + 0.4 * Math.sin(s.tw + t * 0.001 * s.z);
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, 1.3 * s.z * twinkle, 0, Math.PI * 2);
+    ctx.fillStyle = hexToRgba(s.color, s.alpha * twinkle);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+
+// ----- MAIN -----
+(async function() {
+  const {gameRowSprites, overRowSprites, seeYouSprites, planet} = await loadSprites();
+
+  // Canvas setup
+  const canvas = document.getElementById('c');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  // CRISP PIXELS!
+  ctx.imageSmoothingEnabled = false;
+  ctx.webkitImageSmoothingEnabled = false;
+  ctx.msImageSmoothingEnabled = false;
+
+  // Starfield
+  const stars = makeStarfield();
+
+  // Helper: calculate total line width (used for centering)
+function calcLineWidth(sprites, letterW, letterGap=0) {
+  // Only add gap between letters, not after the last one
+  return sprites.length * letterW + (sprites.length - 1) * letterGap;
+}
+
+// For centering:
+const gameRowX = Math.floor((W - calcLineWidth(gameRowSprites, GO_LETTER_W, GO_LETTER_GAP)) / 2);
+const overRowX = Math.floor((W - calcLineWidth(overRowSprites, GO_LETTER_W, GO_LETTER_GAP)) / 2);
+
+
+  // Vertical positions
+  const stackTopY = Math.floor(H * 0.15);              // Y for "GAME"
+  const lineGap = Math.floor(GO_LETTER_H * 0.20);      // Gap between "GAME" and "OVER"
+  const gameRowY = stackTopY;
+  const overRowY = stackTopY + GO_LETTER_H + lineGap;
+
+  // "SEE YOU NEXT TIME!": centered, lower third
+  const seeYouX = Math.floor((W - calcLineWidth(seeYouSprites, SY_LETTER_W)) / 2);
+  const seeYouY = Math.floor(H * 0.60);
+
+  // Per-letter animation phase (enough for both GAME and OVER)
+  const goPhases = [...gameRowSprites, ...overRowSprites].map(() => Math.random() * Math.PI * 2);
+  const syPhases = seeYouSprites.map(() => Math.random() * Math.PI * 2);
+
+  // Planet anim
+
+  let startTime = null;
+
+  function draw(t) {
+    if (!startTime) startTime = t;
+    let elapsed = t - startTime;
+
+    // ----- Clear -----
+    ctx.clearRect(0, 0, W, H);
+
+    // ----- Starfield -----
+    drawStarfield(ctx, stars, t);
+
+    // ----- Planet -----
+const PLANET_SCALE = 8; // <--- Tweak this!
+planetW = 550 * PLANET_SCALE;
+planetH = 230 * PLANET_SCALE;
+let planetX = Math.floor((W - PLANET_W) / 2);
+let planetProgress = Math.min(1, elapsed / PLANET_RISE_DURATION);
+let planetY = lerp(PLANET_Y_START, PLANET_Y_END, Math.sin((planetProgress * Math.PI) / 2));
+
+ctx.save();
+ctx.globalAlpha = 0.98;
+ctx.drawImage(planet, planetX, planetY, PLANET_W, PLANET_H);
+ctx.restore();
+
+
+    // "GAME" row
+for (let i = 0; i < gameRowSprites.length; i++) {
+  let phase = goPhases[i];
+  let floatA = 12 + 6 * Math.sin(t * 0.0004 + phase + i * 0.19);
+  let floatB = 13 * Math.cos(t * 0.0005 + phase + i * 0.18);
+  let x = gameRowX + i * (GO_LETTER_W + GO_LETTER_GAP) + floatB;
+  let y = gameRowY + floatA;
+  ctx.drawImage(gameRowSprites[i], x, y, GO_LETTER_W, GO_LETTER_H);
+}
+
+// "OVER" row
+for (let i = 0; i < overRowSprites.length; i++) {
+  let phase = goPhases[i + gameRowSprites.length];
+  let floatA = 12 + 6 * Math.sin(t * 0.0004 + phase + i * 0.19);
+  let floatB = 13 * Math.cos(t * 0.0005 + phase + i * 0.18);
+  let x = overRowX + i * (GO_LETTER_W + GO_LETTER_GAP) + floatB;
+  let y = overRowY + floatA;
+  ctx.drawImage(overRowSprites[i], x, y, GO_LETTER_W, GO_LETTER_H);
+}
+
+
+const SEE_YOU_ENTRANCE_PERIOD = 10 * 1000; // every 10 seconds
+
+let seeYouDrawX = seeYouX;
+let entranceElapsed = (elapsed % SEE_YOU_ENTRANCE_PERIOD);
+
+for (let i = 0; i < seeYouSprites.length; i++) {
+  let letterW = seeYouOrder[i] === 'syspace.png' ? (SY_LETTER_W * 1.2) : SY_LETTER_W;
+  let phase = syPhases[i];
+
+  // Bounce & scale FX
+  let fxY = Math.abs(Math.sin(t * 0.001 + i * 0.18)) * 32;
+  let fxScale = 1 + Math.sin(t * 0.004 + i * 0.6) * 0.08;
+  let fxAlpha = 1;
+
+  // Periodic entrance: fade/slide in
+  let appear = Math.min(1, (entranceElapsed - i * 50) / 1000);
+  fxAlpha *= appear;
+
+  let baseX = seeYouDrawX;
+  let baseY = seeYouY;
+  ctx.save();
+  ctx.globalAlpha = fxAlpha;
+  ctx.translate(baseX + letterW / 2, baseY + fxY + SY_LETTER_H / 2);
+  ctx.scale(fxScale, fxScale);
+  ctx.drawImage(seeYouSprites[i], -letterW / 2, -SY_LETTER_H / 2, letterW, SY_LETTER_H);
+  ctx.restore();
+  seeYouDrawX += letterW;
+}
+
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>

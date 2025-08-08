@@ -1,0 +1,249 @@
+ @font-face {
+  font-family: 'MagistralBold';
+  src: url('../fonts/MagistralBold.otf') format('opentype');
+  font-weight: bold;
+  font-style: normal;
+}
+
+#beerDropdown {
+  font-family: 'MagistralBold', sans-serif;
+  font-weight: bold;
+  font-size: 1.12em;
+  letter-spacing: 0.02em;
+  /* Optional: make it pop! */
+  background: #203c56;
+  color: #fff;
+  border: 2px solid #ffecd6;
+  border-radius: 10px;
+  padding: 0.2em 1.3em 0.2em 1em;
+  box-shadow: 0 1px 6px #0002;
+}
+
+#tapperAnim {
+  width: 580px;
+  height: 200px;
+  image-rendering: pixelated;
+  display: block;
+  margin: 0 auto;
+}
+
+.status {
+  text-align: center;
+  color: #ffe6b3;
+  font-size: 1.06em;
+  margin-bottom: 1em;
+  min-height: 1.3em;  /* ensures space is always reserved, so layout doesn't shift */
+}
+.dropdown-center {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5em;
+}
+
+.backup-btn {
+  background: #1946af;
+  color: #fff;
+  border: none;
+  padding: 0.6em 1.4em;
+  margin-left: 1.2em;
+  border-radius: 7px;
+  font-size: 1.04em;
+  font-family: 'MagistralBold', sans-serif;
+  margin-right: 0.7em;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.backup-btn:hover {
+  background: #295cfb;
+}
+
+.editor-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: .6em;
+}
+.editor-logo {
+  max-width: 800px;
+  width: 90vw;
+  height: auto;
+  display: block;
+}
+
+    body { background: #0d2b45; color: #b2c0ac; font-family: 'MagistralBold', sans-serif; margin-top: 0.8em; margin-right: 2em; margin-bottom: 1.5em; margin-left: 2em;}
+    .beer-card {
+  display: none;
+  max-width: 800px;
+  margin: 2em auto 1em auto;
+  padding: 1.8em 1.5em 1em 1.5em;
+  background: #203c56;
+  border-radius: 16px;
+  border: 3px solid #ffd4a3;
+  text-align: left;
+  position: relative;
+  min-height: 400px;
+}
+.beer-card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 180px;
+  grid-template-rows: auto auto auto;
+  gap: 0.8em 1.1em;
+  align-items: end;
+}
+
+.logo-cell {
+  grid-row: 1 / span 2;
+  grid-column: 3 / 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.logo-preview-square {
+  width: 150px; height: 150px;
+  background: #ffd4a3; border-radius: 13px;
+  border: 2.5px solid #ffaa5e;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  margin-bottom: 0.6em;
+}
+.logo-preview-square img {
+  max-width: 125px; max-height: 125px;
+  display: block;
+  border-radius: 9px;
+  object-fit: contain;
+}
+
+.logo-dropdown-under {
+  grid-row: 3;
+  grid-column: 3;
+  width: 100%;
+  align-self: start;
+  text-align: center;
+}
+.logo-dropdown-under label {
+  display: block;
+  font-size: 1em;
+}
+
+.beer-fields label {
+  display: block;
+  font-size: 1em;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #e7fbff;
+  margin-bottom: 0.18em;
+}
+
+.beer-fields input, .beer-fields select {
+  font-family: 'MagistralBold', sans-serif;
+  width: 90%;
+  padding: 0.45em 0.5em;
+  font-size: 1em;
+  background: #232b;
+  color: #fff;
+  border: 1px solid #444;
+  border-radius: 5px;
+  margin-bottom: 0.1em;
+  margin-top: 0.09em;
+}
+
+.field-row {
+  display: flex;
+  flex-direction: row;
+  gap: 1.2em;
+  margin-bottom: 0.32em;
+}
+.field-row label {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  flex: 1 1 0;
+}
+
+.field-row label > input,
+.field-row label > select {
+  width: 130px;
+  min-width: 70px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.field-row label.state-label {
+  max-width: 75px;
+  min-width: 55px;
+  flex: 0 0 75px;
+}
+
+.field-row label.state-label input {
+  width: 80%;
+}
+
+.button-bar {
+  margin-top: 1.4em;
+  display: flex;
+  gap: 1em;
+  justify-content: center;
+}
+.button-bar button {
+  padding: 0.7em 1.7em;
+  border-radius: 9px;
+  border: none;
+  font-size: 1.07em;
+  font-weight: 700;
+  box-shadow: 0 2px 10px #0005;
+  cursor: pointer;
+  transition: filter 0.18s;
+}
+.save { background: #544e68; color: #fff; }
+.delete { background: #d08159; color: #fff; }
+.cancel { background: #333333; color: #fff; border: 1px solid #666;}
+.button-bar button:hover { filter: brightness(1.13);}
+@media (max-width: 660px) {
+  .beer-card-grid { flex-direction: column; gap: 0.9em;}
+  .beer-fields-logo { justify-content: flex-start; margin-left: 0.6em;}
+}
+
+.beer-input {
+  font-family: 'MagistralBold', sans-serif;
+  font-size: 1em;
+  background: #232b;
+  color: #fff;
+  border: 1px solid #444;
+  border-radius: 5px;
+  padding: 0.42em 0.5em;
+  margin-bottom: 0.07em;
+  margin-top: 0.07em;
+  width: 10em;
+  min-width: 5em;
+  max-width: 16em;
+  box-sizing: border-box;
+}
+
+.beer-table {
+  margin: 1em auto 1em auto;  /* top right bottom left */
+  /* Optional for symmetry */
+  max-width: 900px;
+  width: 100%;
+}
+
+.beer-table input:focus {
+  outline: 2px solid #ffecd6;
+  background: #1a1e2a;
+}
+
+.beer-abv {
+  width: 2.7em !important;   /* about 3 characters */
+  min-width: 2.3em;
+  max-width: 3em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.beer-state {
+  width: 2.2em !important;   /* about 2 characters */
+  min-width: 1.9em;
+  max-width: 2.5em;
+  text-align: center;
+  letter-spacing: 0.04em;
+}
