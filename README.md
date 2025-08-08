@@ -13,10 +13,10 @@
 
 ░░░░░░░░░░░░▒▒▒▒▒▒▒▒▒▒▒▒▒▒▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░░░░░░░░░░░
 ```
-This trinity of web tools operates the digital signage tap lists at Ground Kontrol Classic Arcade in Portland, OR. The three parts are as follows:  
+This trinity of tools operates the digital signage tap lists at Ground Kontrol Classic Arcade in Portland, OR. The three parts are as follows:  
 
 **`red-side.html/blue-side.html`**:  
-These are the actual tap list displays for each side of the bar.  
+These are the actual tap list displays for each side of the bar. In the original Taplister these were web pages, but they are now a Python application.
 **`red-side-editor.html/blue-side-editor.html`**:  
 These tools provide bartenders/managers with the ability to switch which beers are currently being displayed, as well as mark taps as sold out.  
 **`beer-db-editor.html`**:  
@@ -24,11 +24,10 @@ This tool allows managers to add/remove/modify beers to/from/within the "databas
 
 <h1 style="color: #fabd2f;">Taplists</h1>  
 
-The taplist itself is basically fully autonomous and shouldn't ever really need to be directly modified or manipulated by employees. The Raspberry Pi on which the tap list is displayed is simply configured to point to a single web page, and that is `red-side.html` on the red side and `blue-side.html` on the blue side.  
-Everything from theming to the scaling of the text and images is handled automatically through javascript and should Just Work™. Changes to the tap list on either side are made through the *Taplist Editors*.
+The taplist itself is basically fully autonomous fullscreen Python application and shouldn't ever really need to be directly modified or manipulated by employees. Changes to the tap list on either side are made through the *Taplist Editors*.
 <h1 style="color: #fabd2f;">Taplist Editors</h1>  
 
-The Taplist Editors are the primary pages bartenders/managers/promotions will be dealing with to modify the live tap lists. Again, this is `red-side-editor.html` on red side and `blue-side-editor.html` on the blue side. These pages will ideally be bookmarked on each side's iPad and can be quickly pulled up to swap a keg to another beer, or mark a tap as temporarily sold out. There is no need to do anything on the tap list's end (for example, a refresh or reboot). Each tap list has a "refresh token" that is checked every 10 seconds, and when the ![Static Badge](https://img.shields.io/badge/💾_save_changes-00faff?style=flat) button is clicked, a new refresh token is generated that tells the tap list to refresh itself.  
+The Taplist Editors are the primary pages bartenders/managers/promotions will be dealing with to modify the live tap lists. This is `red-side-editor.html` on red side and `blue-side-editor.html` on the blue side. These pages will ideally be bookmarked on each side's iPad and can be quickly pulled up to swap a keg to another beer, or mark a tap as temporarily sold out. There is no need to do anything on the tap list's end (for example, a refresh or reboot). Each tap list has a "refresh token" that is checked every 10 seconds, and when the ![Static Badge](https://img.shields.io/badge/💾_save_changes-00faff?style=flat) button is clicked, a new refresh token is generated that tells the tap list to refresh itself.  
 
 ### About the `red-beers.json` and `blue-beers.json` files: ###  
 The `red-beers.json` and `blue-beers.json` files, again, shouldn't really ever need to be modified or manipulated by employees, but for demystification purposes let's go over the format of the files a bit.  
@@ -147,4 +146,7 @@ alien sprite flies by and the GK ship follows, shooting at it.
   Todo:  
   - Limit state field to two characters
   - Add motion to tap list logo?
+
+- **v2.0 08.08.25**
+  - Initial rewrite of the HTML version of the Taplist in Python, as the CSS/JS in the HTML version was too heavy for the Pi to run smoothly.
 </details>
