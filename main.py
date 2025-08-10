@@ -4,6 +4,7 @@ from themes import Theme  # and RED/BLUE via launcher
 from systems.starfield import Starfield
 from systems.logos import build_logo_cache
 from systems.ui import draw_taplist
+from systems.battle import Battle
 
 BEERDB_FILE = "./json/beer-database.json"
 FPS = 40
@@ -36,6 +37,7 @@ def run(theme):
 
     logo_cache = build_logo_cache(beerdb, theme.logo_size)
     starfield = Starfield(W, H, count=90)
+    battle = Battle(W, H)
 
     running = True
     while running:
@@ -45,6 +47,9 @@ def run(theme):
             if e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE: running = False
 
         starfield.update(dt)
+        battle.update(dt)
+        battle.draw(screen)
+
 
         screen.fill(theme.bg_color)
         starfield.draw(screen)
