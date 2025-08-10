@@ -1,5 +1,5 @@
-from themes import RED
+from themes import BLUE
 from main import run
 
 if __name__ == "__main__":
-    run(RED)
+    run(BLUE)
