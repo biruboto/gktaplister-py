@@ -35,7 +35,7 @@ def run(theme):
     beerdb = load_json(BEERDB_FILE)
     beers = merge_taplist_with_db(taplist, beerdb)
 
-    logo_cache = build_logo_cache(beerdb, theme.logo_size)
+    logo_cache = build_logo_cache(beerdb, theme.logo_size, theme)
     starfield = Starfield(W, H, count=90)
     battle = Battle(W, H)
 
