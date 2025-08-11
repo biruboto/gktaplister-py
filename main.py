@@ -5,7 +5,7 @@ from systems.logos import build_logo_cache
 from systems.ui import draw_taplist
 from systems.battle import Battle
 from pathlib import Path
-from systems.fetch import is_url, fetch_text_conditional
+from systems.fetch import is_url, fetch_text
 
 BEERDB_FILE = "./json/beer-database.json"
 FPS = 40
@@ -17,7 +17,7 @@ def load_json(path):
     
 def load_beers(json_src: str):
     if is_url(json_src):
-        local = fetch_text_conditional(json_src)  # cached local file
+        local = fetch_text(json_src)  # cached local file
         return json.loads(Path(local).read_text(encoding="utf-8"))
     else:
         return json.loads(Path(json_src).read_text(encoding="utf-8"))
