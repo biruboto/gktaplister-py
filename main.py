@@ -1,10 +1,11 @@
-# main.py
-import pygame, json
+import pygame, json, os
 from themes import Theme  # and RED/BLUE via launcher
 from systems.starfield import Starfield
 from systems.logos import build_logo_cache
 from systems.ui import draw_taplist
 from systems.battle import Battle
+from pathlib import Path
+from systems.fetch import is_url, fetch_text_conditional
 
 BEERDB_FILE = "./json/beer-database.json"
 FPS = 40
@@ -13,6 +14,13 @@ def load_json(path):
     with open(path, encoding="utf-8") as f:
         import json
         return json.load(f)
+    
+def load_beers(json_src: str):
+    if is_url(json_src):
+        local = fetch_text_conditional(json_src)  # cached local file
+        return json.loads(Path(local).read_text(encoding="utf-8"))
+    else:
+        return json.loads(Path(json_src).read_text(encoding="utf-8"))
 
 def merge_taplist_with_db(taplist, beerdb):
     db_by_id = {b['id']: b for b in beerdb}

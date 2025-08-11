@@ -5,7 +5,10 @@ import subprocess
 import tempfile
 import pygame
 import sys
+from pathlib import Path
 import xml.etree.ElementTree as ET
+from systems.fetch import is_url, fetch_binary
+from settings import SERVER_BASE
 
 LOGO_FOLDER = "logos"
 LOGO_CACHE_FOLDER = os.path.join(LOGO_FOLDER, "_cache")
@@ -25,13 +28,6 @@ _GROUP_TAG = f"{{{SVG_NS}}}g"
 
 def ensure_cache_dir():
     os.makedirs(LOGO_CACHE_FOLDER, exist_ok=True)
-
-
-# --- at top of file ---
-import sys
-import subprocess
-import shutil
-import os
 
 def inkscape_path():
     # Prefer console binary on Windows to avoid GUI popups
@@ -202,10 +198,38 @@ def load_logo_surface(filename: str, box_px: int, theme=None) -> pygame.Surface 
 
 
 def build_logo_cache(beerdb: list[dict], size_px: int, theme):
-    """Preload one Surface per distinct logo file for the given theme."""
-    cache = {}
-    for beer in beerdb:
-        logo_file = beer.get("logoPath")
-        if logo_file and logo_file not in cache:
-            cache[logo_file] = load_logo_surface(logo_file, size_px, theme=theme)
+    """
+    Preload one Surface per beer. Assumes your existing rasterize flow:
+    - you have something like rasterize_svg_to_cache(svg_path, out_png_path, size_px, color_rgb=theme.accent)
+    - you load the resulting PNG into pygame and store by beer['id']
+    """
+    cache: dict[str, pygame.Surface] = {}
+    fill_rgb = getattr(theme, "accent", None)
+
+    for b in beerdb:
+        beer_id = b.get("id")
+        logo = b.get("logoPath")
+        if not beer_id or not logo:
+            continue
+
+        # --- NEW: resolve remote/local to a local svg path ---
+        if is_url(logo):
+            remote_url = logo
+        else:
+            remote_url = f"{SERVER_BASE.rstrip('/')}/{logo.lstrip('/')}"
+        local_svg = fetch_binary(remote_url, subdir="logos")
+        svg_path = Path(local_svg)
+
+        # --- your existing PNG cache naming/export/load flow below ---
+        stem = svg_path.stem
+        cached_png = Path("logos/_cache") / f"{stem}_{theme.name}_{size_px}.png"
+        cached_png.parent.mkdir(parents=True, exist_ok=True)
+
+        # Regenerate if missing (keep your existing mtime logic if you have it)
+        if not cached_png.exists():
+            rasterize_svg_to_cache(str(svg_path), str(cached_png), size_px, color_rgb=fill_rgb)
+
+        surf = pygame.image.load(str(cached_png)).convert_alpha()
+        cache[beer_id] = surf
+
     return cache
