@@ -1,4 +1,4 @@
-SERVER_BASE = "http://192.168.1.50/taplist"  # your bar server
+SERVER_BASE = "http://192.168.68.50:8000/"  # your bar server
 # Examples:
 #   JSON at  {SERVER_BASE}/json/red-beers.json
 #   Logos at {SERVER_BASE}/logos/<file or subfolder>

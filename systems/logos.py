@@ -9,6 +9,7 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 from systems.fetch import is_url, fetch_binary
 from settings import SERVER_BASE
+from urllib.parse import urljoin
 
 LOGO_FOLDER = "logos"
 LOGO_CACHE_FOLDER = os.path.join(LOGO_FOLDER, "_cache")
@@ -216,7 +217,14 @@ def build_logo_cache(beerdb: list[dict], size_px: int, theme):
         if is_url(logo):
             remote_url = logo
         else:
-            remote_url = f"{SERVER_BASE.rstrip('/')}/{logo.lstrip('/')}"
+            # Strip leading ./ or / just in case
+            path_part = logo.lstrip("./").lstrip("/")
+            # If it’s just a filename (no slash), serve it from /logos/
+            if "/" not in path_part:
+                path_part = f"logos/{path_part}"
+            remote_url = f"{SERVER_BASE.rstrip('/')}/{path_part}"
+
+        print("[logo fetch]", remote_url)  # <- remove later if noisy
         local_svg = fetch_binary(remote_url, subdir="logos")
         svg_path = Path(local_svg)
 

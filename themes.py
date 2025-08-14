@@ -16,7 +16,7 @@ RED = Theme(
     accent=(255, 36, 56),
     dim_white=(180, 180, 180),
     logo_size=130,
-    json_path="./json/red-beers.json",
+    json_path="json/red-beers.json",
 )
 
 # Blue can point to its own JSON + colors (tweak later)
@@ -26,5 +26,5 @@ BLUE = Theme(
     accent=(64, 180, 255),
     dim_white=(190, 200, 220),
     logo_size=130,
-    json_path="./json/blue-beers.json",
+    json_path="json/blue-beers.json",
 )

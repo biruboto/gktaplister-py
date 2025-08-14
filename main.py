@@ -5,22 +5,28 @@ from systems.logos import build_logo_cache
 from systems.ui import draw_taplist
 from systems.battle import Battle
 from pathlib import Path
+from settings import SERVER_BASE
 from systems.fetch import is_url, fetch_text
 
-BEERDB_FILE = "./json/beer-database.json"
+BEERDB_FILE = "json/beer-database.json"
 FPS = 40
 
-def load_json(path):
-    with open(path, encoding="utf-8") as f:
-        import json
-        return json.load(f)
+def load_json(src: str):
+    src = urlify(src)
+    local_path = fetch_text(src)
+    return json.loads(Path(local_path).read_text(encoding="utf-8"))
+    
+# --- helper to turn relative paths into full URLs using SERVER_BASE ---
+def urlify(p: str) -> str:
+    if is_url(p):
+        return p
+    return f"{SERVER_BASE.rstrip('/')}/{p.lstrip('./').lstrip('/')}"
+
     
 def load_beers(json_src: str):
-    if is_url(json_src):
-        local = fetch_text(json_src)  # cached local file
-        return json.loads(Path(local).read_text(encoding="utf-8"))
-    else:
-        return json.loads(Path(json_src).read_text(encoding="utf-8"))
+    json_src = urlify(json_src)
+    local_path, _changed = fetch_text(json_src)  # or fetch_text(json_src)
+    return json.loads(Path(local_path).read_text(encoding="utf-8"))
 
 def merge_taplist_with_db(taplist, beerdb):
     db_by_id = {b['id']: b for b in beerdb}
