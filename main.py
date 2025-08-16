@@ -41,6 +41,10 @@ def merge_taplist_with_db(taplist, beerdb):
 
 def run(theme):
     pygame.init()
+    # Hide the OS cursor inside the window, ignore mouse events
+    pygame.mouse.set_visible(False)
+    pygame.event.set_blocked([pygame.MOUSEMOTION, pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP])
+
     screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
     W, H = screen.get_size()
     clock = pygame.time.Clock()
