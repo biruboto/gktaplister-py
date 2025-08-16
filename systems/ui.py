@@ -61,7 +61,7 @@ def draw_taplist(screen, beers, logo_cache, theme, screen_w, screen_h,
             left = col_x[col]
 
             # Logo
-            surf = logo_cache.get(beer.get("logoPath"))
+            surf = logo_cache.get(beer.get("id"))
             logo_box_x = left + LOGO_MARGIN
             logo_box_y = top + (CARD_HEIGHT - LOGO_SIZE) // 2
             logo_box_rect = pygame.Rect(logo_box_x, logo_box_y, LOGO_SIZE, LOGO_SIZE)

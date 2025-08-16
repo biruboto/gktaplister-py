@@ -13,6 +13,7 @@ env/
 
 # Logs / junk
 *.log
+dependencies.txt
 
 # Taplist caches / generated art
 logos/_cache/
