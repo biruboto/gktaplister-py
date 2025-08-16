@@ -75,20 +75,35 @@ def draw_taplist(screen, beers, logo_cache, theme, screen_w, screen_h,
             # Text
             x_text = left + LOGO_MARGIN + LOGO_SIZE + 22
             SPACING = 15
-            full_name = f"{beer['brewery']} {beer['title']}".upper()
             max_text_width = (screen_w // 2 - 36) - (LOGO_MARGIN + LOGO_SIZE + 22) - 18
 
-            name_font = get_fitting_font(full_name, max_text_width, beer_font_path, start_size=72, min_size=22)
-            info_line = f"{beer['style'].upper()} – {beer['abv']}% ABV – {beer['city'].upper()}, {beer['state'].upper()}"
-            info_font_fitted = get_fitting_font(info_line, max_text_width, info_font_path, start_size=32, min_size=12)
+            brewery = beer['brewery'].upper()
+            title   = beer['title'].upper()
+            full_name = f"{brewery} {title}"
 
-            name_surf = name_font.render(full_name, True, WHITE)
-            info_surf = info_font_fitted.render(info_line, True, DIM_WHITE)
+            # Fit one font for the whole line so combined width fits
+            name_font = get_fitting_font(full_name, max_text_width, beer_font_path,
+                                         start_size=72, min_size=22)
+
+            info_line = f"{beer['style'].upper()} – {beer['abv']}% ABV – {beer['city'].upper()}, {beer['state'].upper()}"
+            info_font_fitted = get_fitting_font(info_line, max_text_width, info_font_path,
+                                                start_size=32, min_size=12)
+
+            # Render brewery + beer name in different theme shades
+            brewery_surf = name_font.render(brewery, True, theme.text_brewery)
+            space_surf   = name_font.render(" ", True, theme.text_beer)
+            title_surf   = name_font.render(title, True, theme.text_beer)
+
+            info_surf = info_font_fitted.render(info_line, True, theme.text_info)
 
             name_ascent = name_font.get_ascent()
             info_ascent = info_font_fitted.get_ascent()
             block_height = name_ascent + SPACING + info_ascent
             block_top = top + (CARD_HEIGHT - block_height) // 2
 
-            screen.blit(name_surf, (x_text, block_top))
+            x = x_text
+            screen.blit(brewery_surf, (x, block_top));  x += brewery_surf.get_width()
+            screen.blit(space_surf,   (x, block_top));  x += space_surf.get_width()
+            screen.blit(title_surf,   (x, block_top))
+
             screen.blit(info_surf, (x_text, block_top + name_ascent + SPACING))
