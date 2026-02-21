@@ -178,17 +178,40 @@ def build_logo_cache(beerdb: list[dict], size_px: int, theme):
         if not beer_id or not logo:
             continue
 
-        # Resolve remote/local to a local svg path
+        # Resolve to a local SVG path first when possible; only fetch remote as fallback.
+        local_candidates: list[Path] = []
+        remote_url: str | None = None
+
         if is_url(logo):
             remote_url = logo
+            parsed_path = urlparse(logo).path.lstrip("/")
+            if parsed_path:
+                local_candidates.append(Path(parsed_path))
+                local_candidates.append(Path("logos") / Path(parsed_path).name)
         else:
             path_part = logo.lstrip("./").lstrip("/")
             if "/" not in path_part:
                 path_part = f"logos/{path_part}"
+            local_candidates.append(Path(path_part))
             remote_url = f"{SERVER_BASE.rstrip('/')}/{path_part}"
 
-        local_svg = fetch_binary(remote_url, subdir="logos")
-        svg_path = Path(local_svg)
+        svg_path: Path | None = None
+        for cand in local_candidates:
+            if cand.exists():
+                svg_path = cand
+                break
+
+        if svg_path is None and remote_url:
+            try:
+                local_svg = fetch_binary(remote_url, subdir="logos")
+                svg_path = Path(local_svg)
+            except Exception as e:
+                print(f"[logo] fetch failed {logo}: {e}")
+                continue
+
+        if svg_path is None:
+            print(f"[logo] missing logo source for {logo}")
+            continue
 
         # PNG cache name and render
         stem = _logo_stem(logo)

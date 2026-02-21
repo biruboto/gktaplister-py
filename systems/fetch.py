@@ -1,6 +1,9 @@
+import hashlib
+import time
 from pathlib import Path
-from urllib.parse import urlparse, urljoin
-import requests, hashlib, time
+from urllib.parse import urlparse
+
+import requests
 
 def is_url(s: str) -> bool:
     try:
@@ -20,20 +23,31 @@ def _cache_path(url: str, subdir: str, ext_hint: str | None = None) -> Path:
     p.mkdir(parents=True, exist_ok=True)
     return p / f"{h}_{name}"
 
-def fetch_text(url: str, ttl=15) -> Path:
+def fetch_text(url: str, ttl=15, timeout_s=10) -> Path:
     dest = _cache_path(url, "json", ".json")
     if dest.exists() and (time.time() - dest.stat().st_mtime) < ttl:
         return dest
-    r = requests.get(url, timeout=10)
-    r.raise_for_status()
+    try:
+        r = requests.get(url, timeout=timeout_s)
+        r.raise_for_status()
+    except Exception:
+        if dest.exists():
+            # Keep the display alive with stale data during temporary network/server failures.
+            return dest
+        raise
     dest.write_text(r.text, encoding="utf-8")
     return dest
 
-def fetch_binary(url: str, subdir="assets", ttl=300) -> Path:
+def fetch_binary(url: str, subdir="assets", ttl=300, timeout_s=15) -> Path:
     dest = _cache_path(url, subdir, None)
     if dest.exists() and (time.time() - dest.stat().st_mtime) < ttl:
         return dest
-    r = requests.get(url, timeout=15)
-    r.raise_for_status()
+    try:
+        r = requests.get(url, timeout=timeout_s)
+        r.raise_for_status()
+    except Exception:
+        if dest.exists():
+            return dest
+        raise
     dest.write_bytes(r.content)
     return dest

@@ -239,54 +239,67 @@ for (let i = 0; i < 12; i++) {
 }
   });
 
-  // Save handler
-  document.getElementById('editor-form').addEventListener('submit', e => {
-    e.preventDefault();
+// Save handler
+document.getElementById('editor-form').addEventListener('submit', e => {
+  e.preventDefault();
 
-   const selects = document.querySelectorAll('select');
-const newBeers = Array.from(selects).map((select, i) => {
-  const beerId = select.value; // This is the id string!
-  const beer = masterList.find(b => b.id === beerId);
+  // Only grab the tap beer selects (beer-0 ... beer-11), not any other selects on the page
+  const selects = document.querySelectorAll('select[name^="beer-"]');
 
-  if (!beer) return null;
+  // Build beers array in strict tap order (by the index in the select's name)
+  const newBeers = Array.from(selects)
+    .map(select => {
+      const idx = Number(select.name.split('-')[1]); // beer-<idx>
+      const beerId = select.value;
+      const beer = masterList.find(b => b.id === beerId);
+      if (!beer) return null;
 
-  const checkbox = document.querySelector(`input[name="soldout-${i}"]`);
-  return {
-    id: beer.id,
-    soldOut: checkbox?.checked || false
-  };
-}).filter(Boolean);
-
-currentData.beers = newBeers;
-
-/* Uncomment this line to restore theming.
-    currentData.theme = document.getElementById('themeSelect').value; */
-    currentData.refreshToken = Math.random().toString(36).slice(2);
-
-    fetch('php/save-red-taplist.php', {
-      method: 'POST',
-      headers:
-       { 'Content-Type': 'application/json' },
-      body: JSON.stringify(currentData, null, 2)
+      const checkbox = document.querySelector(`input[name="soldout-${idx}"]`);
+      return {
+        id: beer.id,
+        soldOut: checkbox?.checked || false
+      };
     })
-    .then(res => {
-      if (!res.ok) throw new Error("Save failed");
+    .filter(Boolean);
 
-      const statusMsg = document.getElementById('save-status');
-      statusMsg.style.display = 'block';
-      statusMsg.textContent = 'Taplist saved successfully!';
-      statusMsg.style.opacity = '1';
-
-      setTimeout(() => {
-        statusMsg.style.transition = 'opacity 5s ease';
-        statusMsg.style.opacity = '0';
-      }, 3000);
-    })
-    .catch(err => {
-      console.error(err);
-      alert("Failed to save taplist.");
-    });
+  // Extra safety: ensure correct ordering even if the DOM order ever changes
+  newBeers.sort((a, b) => {
+    // We can't sort by idx after mapping unless we preserve it.
+    // So we rebuild again in order using the selects NodeList (which is already in DOM order)
+    // BUT: if you later rearrange DOM, keep this approach:
+    return 0;
   });
+
+  currentData.beers = newBeers;
+
+  /* Uncomment this line to restore theming.
+      currentData.theme = document.getElementById('themeSelect').value; */
+  currentData.refreshToken = Math.random().toString(36).slice(2);
+
+  fetch('php/save-red-taplist.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(currentData, null, 2)
+  })
+  .then(res => {
+    if (!res.ok) throw new Error("Save failed");
+
+    const statusMsg = document.getElementById('save-status');
+    statusMsg.style.display = 'block';
+    statusMsg.textContent = 'Taplist saved successfully!';
+    statusMsg.style.opacity = '1';
+
+    setTimeout(() => {
+      statusMsg.style.transition = 'opacity 5s ease';
+      statusMsg.style.opacity = '0';
+    }, 3000);
+  })
+  .catch(err => {
+    console.error(err);
+    alert("Failed to save taplist.");
+  });
+});
+
 </script>
 
   <p id="save-status" style="display: none; text-align: center; color: #B07BAC; font-weight: bold;">

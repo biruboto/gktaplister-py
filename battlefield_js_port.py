@@ -5,6 +5,11 @@
 
 import math, random, pygame
 
+# Pi-focused defaults: keep the look, cut expensive per-frame blending.
+PI_PERF_MODE = False
+# When True, prefer matching legacy JS behavior over Pi-oriented shortcuts.
+LEGACY_PARITY_MODE = True
+
 # ---------- helpers ----------
 def clamp(v, lo, hi): return lo if v < lo else hi if v > hi else v
 def hex_to_rgb(hexs: str):
@@ -17,6 +22,7 @@ class JSStarfield:
         self.w, self.h = w, h
         self.bg = bg_color
         self.time = 0.0
+        self.perf_mode = PI_PERF_MODE and not LEGACY_PARITY_MODE
         self.layers = self._gen_layers()
         self.stars = self._init_stars()
         # Speeds/amounts taken from your JS:
@@ -27,6 +33,13 @@ class JSStarfield:
 
     def _gen_layers(self):
         w = self.w
+        if self.perf_mode:
+            return [
+                {"count":24, "zmin":w*0.9, "zmax":w*1.0, "color":hex_to_rgb("#ffffff"), "blur":False},
+                {"count":42, "zmin":w*0.6, "zmax":w*0.9, "color":hex_to_rgb("#88ccff"), "blur":False},
+                {"count":58, "zmin":w*0.3, "zmax":w*0.6, "color":hex_to_rgb("#ffffff"), "blur":False},
+                {"count":74, "zmin":w*0.1, "zmax":w*0.3, "color":hex_to_rgb("#ff99cc"), "blur":False},
+            ]
         return [
             {"count":50,  "zmin":w*0.95, "zmax":w*1.0,  "color":hex_to_rgb("#ffffff"), "blur":True},
             {"count":75,  "zmin":w*0.7,  "zmax":w*1.0,  "color":hex_to_rgb("#88ccff"), "blur":False},
@@ -44,6 +57,7 @@ class JSStarfield:
                     "y": random.random() * self.h,
                     "z": z,
                     "o": random.random(),   # opacity jitter 0..1 (clamped in update)
+                    "ov": (random.random() * 1.2) - 0.6,  # twinkle velocity
                     "col": L["color"],
                     "blur": L["blur"],
                     "layer": L,
@@ -64,10 +78,21 @@ class JSStarfield:
                 s["z"] = random.random() * (L["zmax"] - L["zmin"]) + L["zmin"]
                 s["x"] = random.random() * self.w
                 s["y"] = random.random() * self.h
+                s["ov"] = (random.random() * 1.2) - 0.6
 
-            # opacity jitter towards [0.1, 1.0]
-            s["o"] += (random.random() - 0.5) * 0.05
-            s["o"] = clamp(s["o"], 0.1, 1.0)
+            if LEGACY_PARITY_MODE:
+                # Match JS twinkle jitter.
+                s["o"] += (random.random() - 0.5) * 0.05 * dt * 60.0
+                s["o"] = clamp(s["o"], 0.1, 1.0)
+            else:
+                # Smooth twinkle without per-frame RNG calls.
+                s["o"] += s["ov"] * dt
+                if s["o"] < 0.1:
+                    s["o"] = 0.1
+                    s["ov"] = abs(s["ov"])
+                elif s["o"] > 1.0:
+                    s["o"] = 1.0
+                    s["ov"] = -abs(s["ov"])
 
     def draw(self, screen):
         screen.fill(self.bg)
@@ -83,12 +108,23 @@ class JSStarfield:
             size = max(1, int((1.0 - s["z"]/self.w) * 2))
 
             r, g, b = s["col"]
-            a = int(255 * s["o"])
+            # Pi perf: avoid alpha circles on display surface; emulate twinkle via brightness.
+            bright = 0.65 + (s["o"] * 0.35)
+            col = (
+                int(r * bright),
+                int(g * bright),
+                int(b * bright),
+            )
 
-            # shadowBlur approximation: faint halo for "blur" stars
-            if s["blur"]:
-                pygame.draw.circle(screen, (r, g, b, int(a * 0.4)), (int(px), int(py)), max(2, int(size*3)), 0)
-            pygame.draw.circle(screen, (r, g, b, a), (int(px), int(py)), size, 0)
+            if (not self.perf_mode) and s["blur"]:
+                # Approximate JS glow with a larger soft ring.
+                glow = (
+                    min(255, int(r * 0.45)),
+                    min(255, int(g * 0.45)),
+                    min(255, int(b * 0.45)),
+                )
+                pygame.draw.circle(screen, glow, (int(px), int(py)), max(2, int(size*3)), 0)
+            pygame.draw.circle(screen, col, (int(px), int(py)), size, 0)
 
 # ---------- BATTLE (ship/alien/bullets/exhaust) ----------
 class JSBattle:
@@ -148,13 +184,20 @@ class JSBattle:
         self.ship_rot_cache = {}        # {(scale_int, ang_deg): Surface}
         self.alien_scaled = {}          # {(scale_int, frame): Surface}
         self.alien_rot_cache = {}       # {(scale_int, frame, ang_deg): Surface}
-        self.ANGLE_STEP_DEFAULT = 3   # used for normal/combat (good perf)
-        self.ANGLE_STEP_BROKEN  = 1   # smoother spin when broken
+        self.ANGLE_STEP_DEFAULT = 1 if LEGACY_PARITY_MODE else (6 if PI_PERF_MODE else 3)
+        # Broken mode needs smoother spin to avoid "chunky" motion.
+        self.ANGLE_STEP_BROKEN  = 1 if LEGACY_PARITY_MODE else (2 if PI_PERF_MODE else 1)
+        self.max_particles = 1600 if LEGACY_PARITY_MODE else (140 if PI_PERF_MODE else 600)
+        self.max_bullets = 800 if LEGACY_PARITY_MODE else (80 if PI_PERF_MODE else 300)
+        if not LEGACY_PARITY_MODE:
+            self._prewarm_caches()
 
     # ---- crisp helpers ----
     def _quant_angle(self, ang):
         # Use the finer step when the ship is in 'broken' mode
         step = self.ANGLE_STEP_BROKEN if self.ship.get("mode") == "broken" else self.ANGLE_STEP_DEFAULT
+        if step <= 1:
+            return int(round(ang))
         return int(round(ang / step)) * step
 
 
@@ -196,6 +239,17 @@ class JSBattle:
             self.alien_rot_cache[key_rot] = rot
         return rot
 
+    def _prewarm_caches(self):
+        # Build commonly-used rotations up front to avoid runtime hitching.
+        scales = [1, 2, 3, 4]
+        steps = sorted({max(1, int(self.ANGLE_STEP_DEFAULT)), max(1, int(self.ANGLE_STEP_BROKEN))})
+        for s in scales:
+            for step in steps:
+                for ang in range(0, 360, step):
+                    self._get_ship_surface_crisp(s, ang)
+                    for frame in range(len(self.alien_frames)):
+                        self._get_alien_surface_crisp(s, frame, ang)
+
     # ---- alien frames from JS ----
     def _build_alien_frames(self):
         f0 = [
@@ -234,6 +288,8 @@ class JSBattle:
 
     # ---- exhaust particles ----
     def _add_thrust(self):
+        if len(self.particles) >= self.max_particles:
+            return
         angle_rad = math.radians(self.ship["angle"])
         scale     = self.ship["scale"]
         rear_off_x = -(self.ship_w * scale) / 2
@@ -247,7 +303,10 @@ class JSBattle:
         cy = self.ship["y"] + (self.ship_h * scale) / 2
         tx, ty = cx + rx, cy + ry
 
-        for _ in range(4):
+        spawn_count = 4 if LEGACY_PARITY_MODE else (2 if PI_PERF_MODE else 4)
+        for _ in range(spawn_count):
+            if len(self.particles) >= self.max_particles:
+                break
             base = angle_rad + math.pi
             spread = (random.random() - 0.5) * 0.6
             ang = base + spread
@@ -259,22 +318,38 @@ class JSBattle:
         decay = math.pow(0.9, dt*60.0)  # matches JS frame-scaling
         fade  = 0.1 * dt * 60.0
         keep = []
+        margin = 24
         for p in self.particles:
             p["x"] += p["vx"] * dt; p["y"] += p["vy"] * dt
             p["r"] *= decay
             p["a"] -= fade
-            if p["a"] > 0: keep.append(p)
+            if (
+                p["a"] > 0
+                and -margin <= p["x"] <= self.w + margin
+                and -margin <= p["y"] <= self.h + margin
+            ):
+                keep.append(p)
         self.particles = keep
 
     def _draw_particles(self, screen):
         # radial gradient approximation: core + halo
         for p in self.particles:
             x, y = int(p["x"]), int(p["y"])
+            if x < -16 or x > self.w + 16 or y < -16 or y > self.h + 16:
+                continue
             a = clamp(p["a"], 0.0, 1.0)
             r_core = max(1, int(p["r"]))
-            r_halo = max(r_core+1, int(p["r"]*1.8))
-            pygame.draw.circle(screen, (180,220,255, int(200*a)), (x,y), r_core, 0)
-            pygame.draw.circle(screen, (0,100,255,  int( 80*a)), (x,y), r_halo, 0)
+            if PI_PERF_MODE and not LEGACY_PARITY_MODE:
+                core = (
+                    int(180 * a),
+                    int(220 * a),
+                    int(255 * a),
+                )
+                pygame.draw.circle(screen, core, (x, y), r_core, 0)
+            else:
+                r_halo = max(r_core+1, int(p["r"]*1.8))
+                pygame.draw.circle(screen, (180,220,255, int(200*a)), (x,y), r_core, 0)
+                pygame.draw.circle(screen, (0,100,255,  int( 80*a)), (x,y), r_halo, 0)
 
     # ---- bullets ----
     def _fire_bullet_pair(self):
@@ -297,6 +372,8 @@ class JSBattle:
                                  "vx":math.cos(angle)*speed + self.ship["vx"],
                                  "vy":math.sin(angle)*speed + self.ship["vy"],
                                  "r":1.0*scale, "life":240.0})
+        if len(self.bullets) > self.max_bullets:
+            self.bullets = self.bullets[-self.max_bullets:]
 
     # ---- activation / spawn ----
     def _maybe_activate_ship(self):
@@ -369,7 +446,10 @@ class JSBattle:
             if self.bullet_timer >= self.next_bullet_interval:
                 self._fire_bullet_pair()
                 self.bullet_timer = 0.0
-                self.next_bullet_interval = 5 + int(random.random()*50)  # 5..54 frames
+                if PI_PERF_MODE and not LEGACY_PARITY_MODE:
+                    self.next_bullet_interval = 12 + int(random.random() * 48)  # 12..59 frames
+                else:
+                    self.next_bullet_interval = 5 + int(random.random() * 50)   # 5..54 frames
 
             # alien position 200px ahead + perpendicular bob
             forward = 200.0
@@ -403,6 +483,8 @@ class JSBattle:
             if b["life"] > 0:
                 keep.append(b)
         self.bullets = keep
+        if len(self.bullets) > self.max_bullets:
+            self.bullets = self.bullets[-self.max_bullets:]
 
         self._update_particles(dt)
 
@@ -413,7 +495,10 @@ class JSBattle:
     def draw(self, screen):
         # bullets
         for b in self.bullets:
-            pygame.draw.circle(screen, (255,255,255,255), (int(b["x"]), int(b["y"])), max(1, int(b["r"])), 0)
+            bx, by = int(b["x"]), int(b["y"])
+            if bx < -4 or bx > self.w + 4 or by < -4 or by > self.h + 4:
+                continue
+            pygame.draw.circle(screen, (255,255,255,255), (bx, by), max(1, int(b["r"])), 0)
         # particles
         self._draw_particles(screen)
 
@@ -427,7 +512,7 @@ class JSBattle:
             screen.blit(surf, rect)
 
         # alien (CRISP)
-        if self.alien["active"] or self.ship["mode"] == "combat":
+        if self.alien["active"]:
             a_rot = self._get_alien_surface_crisp(self.alien["scale"], self.alien["frame"], self.alien["angle"])
             rect = a_rot.get_rect(center=(int(self.alien["x"]), int(self.alien["y"])))
             screen.blit(a_rot, rect)
@@ -446,9 +531,13 @@ class ArcadeBattlefield:
         self.starfield.update(dt)
         self.battle.update(dt)
 
-    def draw(self, screen):
-        self.starfield.draw(screen)
-        self.battle.draw(screen)
+    def draw(self, screen, draw_starfield=True, draw_battle=True):
+        if draw_starfield:
+            self.starfield.draw(screen)
+        else:
+            screen.fill(self.starfield.bg)
+        if draw_battle:
+            self.battle.draw(screen)
 
 # ---------- Standalone runner ----------
 if __name__ == "__main__":

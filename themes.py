@@ -28,12 +28,12 @@ RED = Theme(
 # Blue can point to its own JSON + colors (tweak later)
 BLUE = Theme(
     name="blue",
-    bg_color=(10, 16, 32),
+    bg_color=(13, 13, 27),
     accent=(64, 180, 255),
     dim_white=(190, 200, 220),
     logo_size=130,
     json_path="json/blue-beers.json",
-    text_brewery=(161, 29, 51),
-    text_beer=(110, 20, 35),
-    text_info=(221, 186, 186),
+    text_brewery=(80, 140, 155),
+    text_beer=(19, 75, 112),
+    text_info=(206, 216, 235),
 )
