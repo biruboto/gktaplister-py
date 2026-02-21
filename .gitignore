@@ -17,3 +17,5 @@ dependencies.txt
 
 # Taplist caches / generated art
 logos/_cache/
+
+legacy/
