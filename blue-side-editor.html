@@ -1,294 +1,441 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Blue Side Taplist Editor</title>
   <style>
     @font-face {
-  font-family: 'MagistralBold';
-  src: url('./fonts/MagistralBold.otf') format('opentype');
-}
+      font-family: "MagistralBold";
+      src: url("./fonts/MagistralBold.otf") format("opentype");
+    }
+
+    @font-face {
+      font-family: "Orbitron";
+      src: url("./fonts/Orbitron.otf") format("opentype");
+    }
+
+    :root {
+      --bg-0: #060b17;
+      --bg-1: #0b1423;
+      --panel: #111b2c;
+      --panel-2: #162338;
+      --text: #dfe9ff;
+      --muted: #8ea3ca;
+      --accent: #6ba7ff;
+      --ok: #46dfcc;
+      --danger: #ff6b84;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      
-      font-family: 'MagistralBold';
-      background-color: #0d001a;
-      max-width: 900px;
-      margin: 40px auto;
+      margin: 0;
+      min-height: 100vh;
+      font-family: "MagistralBold", sans-serif;
+      color: var(--text);
+      background: var(--bg-0);
     }
-    h1 {
-      text-align: center;
+
+    .page {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 20px 18px 28px;
     }
-    .logo-container {
-    text-align: center;
-    margin: 20px 0;
+
+    .header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 14px;
+      align-items: center;
+      margin-bottom: 16px;
     }
-    .logo-img {
-    max-width: 600px;
-    height: auto;
+
+    .logo-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
     }
-    #dropdowns-container.grid {
-  display: grid;
-  grid-template-columns: auto auto auto auto;
-  justify-content: center;
-  gap: 1.5em 2em;
-}
 
-.theme-select-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin: 20px auto 20px;
-  gap: 0.5em;
-}
+    .logo-wrap img {
+      width: min(100%, 560px);
+      height: auto;
+      filter: none;
+    }
 
-.theme-select-wrapper label {
-  color: #f5f5f5;
-  font-size: 1.1em;
-  letter-spacing: 1px;
-}
+    .meta {
+      text-align: right;
+      font-family: "Orbitron", sans-serif;
+      color: var(--muted);
+      font-size: 0.82rem;
+      letter-spacing: 0.06em;
+      line-height: 1.35;
+    }
 
+    .grid {
+      padding: 0;
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 
-select {
-  width: 100%;
-  min-width: 300px;
-  max-width: 400px;
-  padding: 12px 16px;
-  font-size: 1rem;
-  border-radius: 8px;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  background-color: #111;
-  color: #f5f5f5;
-  border: 2px solid #555;
-  font-family: 'MagistralBold', sans-serif;
-  background-image: url('data:image/svg+xml;charset=US-ASCII,<svg fill="white" height="24" viewBox="0 0 24 24" width="32" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 16px 16px;
-}
+    .tap-card {
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      padding: 0;
+    }
 
-input[type="checkbox"] {
-  width: 32px;
-  height: 32px;
-  accent-color: #00d8ff;
-  cursor: pointer;
-}
-
-select:focus {
-  outline: none;
-  border-color: #00d8ff;
-  box-shadow: 0 0 5px #00d8ff66;
-}
-
-.beer-select-group {
-  width: 100%;
-  text-align: center;
-}
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
 
     select {
-      width: 100%;
-      padding: 8px;
-      font-size: 1em;
+      width: auto;
+      flex: 1 1 auto;
+      min-width: 0;
+      border-radius: 10px;
+      border: 1px solid #45628d;
+      padding: 11px 44px 11px 10px;
+      font-size: 0.99rem;
+      font-family: "MagistralBold", sans-serif;
+      color: #edf3ff;
+      background:
+        linear-gradient(180deg, #0e1728, #091120),
+        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>") no-repeat right 12px center / 16px 16px;
+      appearance: none;
+      outline: none;
     }
-      button[type="submit"] {
-  background-color: #6cbbca;
-  color: #57175a;
-  border: none;
-  width: 100%;
-  max-width: 300px;
-  border-radius: 8px;
-  padding: 5px 10px;
-  font-size: 1.5rem;
-  font-weight: bold;
-  font-family: 'MagistralBold', sans-serif;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  box-shadow: 0 0 10px #00d8ff55;
-  width: 100%;
-  margin: 20px auto 0;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  display: block;
-}
 
-button[type="submit"] img {
-  width: auto;
-  vertical-align: -.05em;   /* Fine-tune up/down if needed */
-  margin-right: 0.5em;
-}
+    select option {
+      background: #091120;
+      color: #edf3ff;
+    }
 
-button[type="submit"]:hover {
-  box-shadow: 0 0 16px #00faff99, 0 0 32px #00faff44;
-}
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px #6ba7ff33;
+    }
 
-button[type="submit"]:active {
-  transform: scale(0.97);
-}
+    .sold-row {
+      margin-top: 0;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: flex-start;
+      gap: 6px;
+      color: #c5d6f8;
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
 
-      @keyframes pulseGlow {
-  0% {
-    filter: drop-shadow(0 0 0px #00faff);
-  }
-  50% {
-    filter: drop-shadow(0 0 10px #00faff);
-  }
-  100% {
-    filter: drop-shadow(0 0 0px #00faff);
-  }
-}
+    .switch {
+      position: relative;
+      width: 52px;
+      height: 30px;
+      flex: 0 0 auto;
+    }
 
-.pulse-glow {
-  animation: pulseGlow 5s infinite ease-in-out;
-}
+    .switch input {
+      position: absolute;
+      opacity: 0;
+      inset: 0;
+      cursor: pointer;
+    }
 
+    .slider {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: #2d4060;
+      border: 1px solid #4a6998;
+      transition: all 140ms ease;
+    }
+
+    .slider::before {
+      content: "";
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      left: 3px;
+      top: 3px;
+      background: #dfe9ff;
+      transition: transform 140ms ease;
+    }
+
+    .switch input:checked + .slider {
+      background: #7fb6ff;
+      border-color: #9ec8ff;
+    }
+
+    .switch input:checked + .slider::before {
+      transform: translateX(22px);
+      background: #0a1527;
+    }
+
+    .actions {
+      margin-top: 12px;
+      padding: 0;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .status {
+      margin-right: auto;
+      font-family: "Orbitron", sans-serif;
+      font-size: 0.82rem;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      min-height: 1em;
+    }
+
+    .status.ok {
+      color: var(--ok);
+    }
+
+    .status.err {
+      color: var(--danger);
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 11px 16px;
+      font-family: "Orbitron", sans-serif;
+      font-size: 0.82rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: transform 120ms ease, filter 120ms ease;
+    }
+
+    button:hover {
+      filter: brightness(1.1);
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    .btn-primary {
+      color: #081325;
+      background: linear-gradient(180deg, #aacdff, #6ba7ff);
+      border: 1px solid #bed9ff;
+      font-weight: 700;
+      min-width: 170px;
+    }
+
+    @media (max-width: 760px) {
+      .header {
+        grid-template-columns: 1fr;
+      }
+
+      .meta {
+        text-align: left;
+      }
+
+      .page {
+        padding-left: 10px;
+        padding-right: 10px;
+      }
+
+      .control-row {
+        gap: 8px;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="logo-container">
-  <img src="./images/blueeditor.png" alt="Taplist Logo" class="logo-img pulse-glow">
-</div>
-  <form id="editor-form">
-    <div id="dropdowns-container" class="grid"></div>
+  <main class="page">
+    <header class="header">
+      <div class="logo-wrap">
+        <img src="./images/blueeditor.svg" alt="Blue Side Editor">
+      </div>
+      <div class="meta">
+        <div id="meta-slots">8 taps</div>
+        <div id="meta-loaded">loading...</div>
+      </div>
+    </header>
 
-<!-- I had a theming engine implemented and the ability for bartenders to change themes, which was vetoed.
- Rather than rip it all out I have just commented it out here and you can uncomment to restore this functionality.
-    
-<div class="theme-select-wrapper">
-    <label for="themeSelect">CHANGE THEME:</label>
-    <select id="themeSelect">
-       <option value="red side">red side</option>
-       <option value="blue side">blue side</option>
-    </select>
-</div> -->
-    <button type="submit">💾 Save Changes</button>
-  </form>
+    <form id="editor-form">
+      <section id="tap-grid" class="grid" aria-live="polite"></section>
 
- <script>
-  let masterList = [];
-  let currentList = [];
-  let currentData = {}; // full JSON object
+      <footer class="actions">
+        <div id="save-status" class="status" role="status" aria-live="polite"></div>
+        <button class="btn-primary" type="submit">Save Changes</button>
+      </footer>
+    </form>
+  </main>
 
-  function formatBeerLabel(beer) {
-    return `${beer.brewery} ${beer.title}`;
-  }
+  <script>
+    const SLOT_COUNT = 8;
+    const DB_URL = "json/beer-database.json";
+    const TAPLIST_URL = "json/blue-beers.json";
+    const SAVE_URL = "php/save-blue-taplist.php";
 
-  Promise.all([
-    fetch('json/beer-database.json').then(res => res.json()),
-    fetch('json/blue-beers.json').then(res => res.json())
-  ])
-  .then(([database, taplist]) => {
-    masterList = database.sort((a, b) => {
-      const aName = `${a.brewery} ${a.title}`.toLowerCase();
-      const bName = `${b.brewery} ${b.title}`.toLowerCase();
-      return aName.localeCompare(bName);
-    });
+    let masterList = [];
+    let currentData = {};
 
-    currentData = taplist;
-    currentList = taplist.beers; // ✅ point to the beers array
+    const gridEl = document.getElementById("tap-grid");
+    const formEl = document.getElementById("editor-form");
+    const statusEl = document.getElementById("save-status");
+    const loadedEl = document.getElementById("meta-loaded");
 
-    // Set the theme dropdown **This part is also commented out to remove theme functionality. Uncomment to restore.
-  /*   const themeSelect = document.getElementById('themeSelect');
-    if (themeSelect && currentData.theme) {
-      themeSelect.value = currentData.theme;
-    } */
-
-    const container = document.getElementById('dropdowns-container');
-
-for (let i = 0; i < 8; i++) {
-  const beer = currentList[i] || {};
-  const select = document.createElement('select');
-  select.name = `beer-${i}`;
-  select.required = true;
-
-  masterList.forEach(optionBeer => {
-    const option = document.createElement('option');
-    option.value = optionBeer.id; // Use id as value!
-    option.textContent = formatBeerLabel(optionBeer);
-
-    if (beer.id && optionBeer.id === beer.id) {
-      option.selected = true;
+    function formatBeerLabel(beer) {
+      return `${beer.brewery} ${beer.title}`;
     }
 
-    select.appendChild(option);
-  });
+    function setStatus(message, type = "") {
+      statusEl.textContent = message;
+      statusEl.className = `status ${type}`.trim();
+    }
 
-  // SOLD OUT checkbox
-  const checkboxLabel = document.createElement('label');
-  checkboxLabel.style.display = 'flex';
-  checkboxLabel.style.alignItems = 'center';
-  checkboxLabel.style.justifyContent = 'center';
-  checkboxLabel.style.fontSize = '0.9em';
-  checkboxLabel.style.color = '#f5f5f5';
-  checkboxLabel.style.gap = '0.4em';
+    function createBeerSelect(slotIndex, selectedBeerId) {
+      const select = document.createElement("select");
+      select.name = `beer-${slotIndex}`;
+      select.required = true;
 
-  const checkbox = document.createElement('input');
-  checkbox.type = 'checkbox';
-  checkbox.name = `soldout-${i}`;
-  checkbox.checked = beer.soldOut === true;
+      masterList.forEach((beer) => {
+        const option = document.createElement("option");
+        option.value = beer.id;
+        option.textContent = formatBeerLabel(beer);
+        if (beer.id === selectedBeerId) option.selected = true;
+        select.appendChild(option);
+      });
 
-  checkboxLabel.appendChild(checkbox);
-  checkboxLabel.appendChild(document.createTextNode('SOLD OUT?'));
+      return select;
+    }
 
-  container.appendChild(select);
-  container.appendChild(checkboxLabel);
-}
-  });
+    function createTapCard(slotIndex, slotData) {
+      const card = document.createElement("article");
+      card.className = "tap-card";
+      card.dataset.slotIndex = String(slotIndex);
 
-  // Save handler
-  document.getElementById('editor-form').addEventListener('submit', e => {
-    e.preventDefault();
+      const controlRow = document.createElement("div");
+      controlRow.className = "control-row";
 
-const selects = document.querySelectorAll('select');
-const newBeers = Array.from(selects).map((select, i) => {
-  const beerId = select.value; // now the actual id string!
-  const beer = masterList.find(b => b.id === beerId);
+      const select = createBeerSelect(slotIndex, slotData.id);
 
-  if (!beer) return null;
+      const soldRow = document.createElement("label");
+      soldRow.className = "sold-row";
+      soldRow.setAttribute("for", `soldout-${slotIndex}`);
+      soldRow.textContent = "sold out?";
 
-  const checkbox = document.querySelector(`input[name="soldout-${i}"]`);
-  return {
-    id: beer.id,
-    soldOut: checkbox?.checked || false
-  };
-}).filter(Boolean);
+      const switchWrap = document.createElement("span");
+      switchWrap.className = "switch";
 
-currentData.beers = newBeers;
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.name = `soldout-${slotIndex}`;
+      checkbox.id = `soldout-${slotIndex}`;
+      checkbox.checked = slotData.soldOut === true;
 
-/* Uncomment this line to restore theming.
-    currentData.theme = document.getElementById('themeSelect').value; */
-    currentData.refreshToken = Math.random().toString(36).slice(2);
+      const slider = document.createElement("span");
+      slider.className = "slider";
 
-    fetch('php/save-blue-taplist.php', {
-      method: 'POST',
-      headers:
-       { 'Content-Type': 'application/json' },
-      body: JSON.stringify(currentData, null, 2)
-    })
-    .then(res => {
-      if (!res.ok) throw new Error("Save failed");
+      switchWrap.appendChild(checkbox);
+      switchWrap.appendChild(slider);
+      soldRow.appendChild(switchWrap);
 
-      const statusMsg = document.getElementById('save-status');
-      statusMsg.style.display = 'block';
-      statusMsg.textContent = 'Taplist saved successfully!';
-      statusMsg.style.opacity = '1';
+      controlRow.appendChild(select);
+      controlRow.appendChild(soldRow);
+      card.appendChild(controlRow);
+      return card;
+    }
 
-      setTimeout(() => {
-        statusMsg.style.transition = 'opacity 5s ease';
-        statusMsg.style.opacity = '0';
-      }, 3000);
-    })
-    .catch(err => {
-      console.error(err);
-      alert("Failed to save taplist.");
+    function buildGrid() {
+      gridEl.innerHTML = "";
+      const beers = currentData.beers || [];
+
+      for (let i = 0; i < SLOT_COUNT; i++) {
+        const slot = beers[i] || {};
+        const card = createTapCard(i, {
+          id: slot.id || (masterList[0] ? masterList[0].id : ""),
+          soldOut: slot.soldOut === true
+        });
+        gridEl.appendChild(card);
+      }
+    }
+
+    function serializeForm() {
+      const cards = Array.from(gridEl.querySelectorAll(".tap-card"));
+      return cards.map((card) => {
+        const idx = Number(card.dataset.slotIndex);
+        const select = card.querySelector(`select[name="beer-${idx}"]`);
+        const checkbox = card.querySelector(`input[name="soldout-${idx}"]`);
+        return {
+          id: select.value,
+          soldOut: checkbox.checked === true
+        };
+      });
+    }
+
+    async function loadData() {
+      setStatus("Loading...");
+      const [dbRes, tapRes] = await Promise.all([fetch(DB_URL), fetch(TAPLIST_URL)]);
+      if (!dbRes.ok || !tapRes.ok) {
+        throw new Error("Failed to load editor data.");
+      }
+
+      const [database, taplist] = await Promise.all([dbRes.json(), tapRes.json()]);
+
+      masterList = database.sort((a, b) => {
+        const nameA = `${a.brewery} ${a.title}`.toLowerCase();
+        const nameB = `${b.brewery} ${b.title}`.toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+
+      currentData = taplist;
+      if (!Array.isArray(currentData.beers)) currentData.beers = [];
+      buildGrid();
+      loadedEl.textContent = `Loaded ${new Date().toLocaleTimeString()}`;
+      setStatus("Ready.");
+    }
+
+    async function saveData() {
+      const newBeers = serializeForm();
+      currentData.beers = newBeers;
+      currentData.refreshToken = Math.random().toString(36).slice(2);
+
+      const response = await fetch(SAVE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(currentData, null, 2)
+      });
+
+      if (!response.ok) {
+        throw new Error("Save request failed.");
+      }
+
+      loadedEl.textContent = `Saved ${new Date().toLocaleTimeString()}`;
+    }
+
+    formEl.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      setStatus("Saving...");
+
+      try {
+        await saveData();
+        setStatus("Taplist saved successfully.", "ok");
+      } catch (error) {
+        console.error(error);
+        setStatus("Failed to save taplist.", "err");
+      }
     });
-  });
-</script>
 
-
-  <p id="save-status" style="display: none; text-align: center; color: #B07BAC; font-weight: bold; margin-top: 1em;">
-  Taplist saved successfully!
-</p>
-
+    loadData().catch((error) => {
+      console.error(error);
+      setStatus("Unable to load editor data.", "err");
+    });
+  </script>
 </body>
 </html>

@@ -30,14 +30,14 @@
         "logoPath": "gigantic.svg"
     },
     {
-        "id": "0fbc3j77",
         "brewery": "2 towns",
         "title": "brightcider",
         "city": "corvallis",
         "state": "or",
         "style": "hard apple cider",
         "abv": "6.0",
-        "logoPath": "2towns.svg"
+        "logoPath": "2towns.svg",
+        "id": "0fbc3j77"
     },
     {
         "id": "p7o6yl3m",
@@ -118,15 +118,5 @@
         "style": "american stout",
         "abv": "5.7",
         "logoPath": "gigantic.svg"
-    },
-    {
-        "id": "1fjidozb",
-        "brewery": "happy",
-        "title": "gilmore",
-        "city": "casper",
-        "state": "wy",
-        "style": "tootsie roll",
-        "abv": "3.4",
-        "logoPath": "widmer.svg"
     }
 ]

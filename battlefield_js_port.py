@@ -3,12 +3,41 @@
 # - Nearest-neighbor scaling (pygame.transform.scale)
 # - Quantized angles and rotation cache for sharp, stable rotations
 
-import math, random, pygame
+import math
+import os
+import random
+
+import pygame
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw.strip())
+    except Exception:
+        return default
 
 # Pi-focused defaults: keep the look, cut expensive per-frame blending.
-PI_PERF_MODE = False
+PI_PERF_MODE = _env_bool("GK_PI_PERF_MODE", False)
 # When True, prefer matching legacy JS behavior over Pi-oriented shortcuts.
-LEGACY_PARITY_MODE = True
+LEGACY_PARITY_MODE = _env_bool("GK_LEGACY_PARITY_MODE", True)
+# Smooth twinkle removes per-frame RNG jitter in star updates.
+SMOOTH_TWINKLE = _env_bool("GK_SMOOTH_TWINKLE", True)
+# Prewarm sprite rotation cache at startup to avoid runtime hitch spikes.
+PREWARM_ROT_CACHE = _env_bool("GK_PREWARM_ROT_CACHE", True)
+# Stabilize combat cadence by disabling per-shot random fire interval.
+STABLE_BULLET_CADENCE = _env_bool("GK_STABLE_BULLET_CADENCE", True)
+# Optional hard override for per-frame thrust particle spawn.
+THRUST_PARTICLES = max(0, _env_int("GK_THRUST_PARTICLES", 0))
 
 # ---------- helpers ----------
 def clamp(v, lo, hi): return lo if v < lo else hi if v > hi else v
@@ -29,7 +58,8 @@ class JSStarfield:
         self.STAR_SPEED = 80.0        # px/sec
         self.DRIFT_SPEED_X = 0.001
         self.DRIFT_SPEED_Y = 0.0012
-        self.DRIFT_AMOUNT  = 0.01
+        self.DRIFT_AMOUNT_X = 0.16
+        self.DRIFT_AMOUNT_Y = 0.14
 
     def _gen_layers(self):
         w = self.w
@@ -38,13 +68,13 @@ class JSStarfield:
                 {"count":24, "zmin":w*0.9, "zmax":w*1.0, "color":hex_to_rgb("#ffffff"), "blur":False},
                 {"count":42, "zmin":w*0.6, "zmax":w*0.9, "color":hex_to_rgb("#88ccff"), "blur":False},
                 {"count":58, "zmin":w*0.3, "zmax":w*0.6, "color":hex_to_rgb("#ffffff"), "blur":False},
-                {"count":74, "zmin":w*0.1, "zmax":w*0.3, "color":hex_to_rgb("#ff99cc"), "blur":False},
+                {"count":74, "zmin":w*0.1, "zmax":w*0.3, "color":hex_to_rgb("#e7abc2"), "blur":False},
             ]
         return [
             {"count":50,  "zmin":w*0.95, "zmax":w*1.0,  "color":hex_to_rgb("#ffffff"), "blur":True},
             {"count":75,  "zmin":w*0.7,  "zmax":w*1.0,  "color":hex_to_rgb("#88ccff"), "blur":False},
             {"count":100, "zmin":w*0.4,  "zmax":w*0.7,  "color":hex_to_rgb("#ffffff"), "blur":False},
-            {"count":125, "zmin":w*0.1,  "zmax":w*0.4,  "color":hex_to_rgb("#ff99cc"), "blur":False},
+            {"count":125, "zmin":w*0.1,  "zmax":w*0.4,  "color":hex_to_rgb("#e7abc2"), "blur":False},
         ]
 
     def _init_stars(self):
@@ -80,7 +110,7 @@ class JSStarfield:
                 s["y"] = random.random() * self.h
                 s["ov"] = (random.random() * 1.2) - 0.6
 
-            if LEGACY_PARITY_MODE:
+            if LEGACY_PARITY_MODE and not SMOOTH_TWINKLE:
                 # Match JS twinkle jitter.
                 s["o"] += (random.random() - 0.5) * 0.05 * dt * 60.0
                 s["o"] = clamp(s["o"], 0.1, 1.0)
@@ -97,8 +127,16 @@ class JSStarfield:
     def draw(self, screen):
         screen.fill(self.bg)
         # drifting projection center
-        centerX = self.w/2 + math.sin(self.time * self.DRIFT_SPEED_X) * self.w * 0.1
-        centerY = self.h/2 + math.cos(self.time * 0.0013          ) * self.h * 0.1
+        centerX = (
+            self.w / 2
+            + math.sin(self.time * self.DRIFT_SPEED_X) * self.w * self.DRIFT_AMOUNT_X
+            + math.sin(self.time * self.DRIFT_SPEED_Y * 0.63 + 1.2) * self.w * 0.05
+        )
+        centerY = (
+            self.h / 2
+            + math.cos(self.time * self.DRIFT_SPEED_Y) * self.h * self.DRIFT_AMOUNT_Y
+            + math.sin(self.time * self.DRIFT_SPEED_X * 0.77 + 0.4) * self.h * 0.04
+        )
 
         for s in self.stars:
             # perspective projection
@@ -184,12 +222,14 @@ class JSBattle:
         self.ship_rot_cache = {}        # {(scale_int, ang_deg): Surface}
         self.alien_scaled = {}          # {(scale_int, frame): Surface}
         self.alien_rot_cache = {}       # {(scale_int, frame, ang_deg): Surface}
-        self.ANGLE_STEP_DEFAULT = 1 if LEGACY_PARITY_MODE else (6 if PI_PERF_MODE else 3)
+        default_angle_step = 1 if LEGACY_PARITY_MODE else (6 if PI_PERF_MODE else 3)
+        self.ANGLE_STEP_DEFAULT = max(1, _env_int("GK_ANGLE_STEP_DEFAULT", default_angle_step))
         # Broken mode needs smoother spin to avoid "chunky" motion.
-        self.ANGLE_STEP_BROKEN  = 1 if LEGACY_PARITY_MODE else (2 if PI_PERF_MODE else 1)
+        broken_angle_step = 1 if LEGACY_PARITY_MODE else (2 if PI_PERF_MODE else 1)
+        self.ANGLE_STEP_BROKEN = max(1, _env_int("GK_ANGLE_STEP_BROKEN", broken_angle_step))
         self.max_particles = 1600 if LEGACY_PARITY_MODE else (140 if PI_PERF_MODE else 600)
         self.max_bullets = 800 if LEGACY_PARITY_MODE else (80 if PI_PERF_MODE else 300)
-        if not LEGACY_PARITY_MODE:
+        if PREWARM_ROT_CACHE and (PI_PERF_MODE or not LEGACY_PARITY_MODE):
             self._prewarm_caches()
 
     # ---- crisp helpers ----
@@ -290,7 +330,9 @@ class JSBattle:
     def _add_thrust(self):
         if len(self.particles) >= self.max_particles:
             return
-        angle_rad = math.radians(self.ship["angle"])
+        # Match rendered ship orientation; using raw angle can offset exhaust,
+        # and the error grows as ship scale increases.
+        angle_rad = math.radians(self._quant_angle(self.ship["angle"]))
         scale     = self.ship["scale"]
         rear_off_x = -(self.ship_w * scale) / 2
         rear_off_y = 0
@@ -303,16 +345,35 @@ class JSBattle:
         cy = self.ship["y"] + (self.ship_h * scale) / 2
         tx, ty = cx + rx, cy + ry
 
-        spawn_count = 4 if LEGACY_PARITY_MODE else (2 if PI_PERF_MODE else 4)
+        if THRUST_PARTICLES > 0:
+            spawn_count = THRUST_PARTICLES
+        else:
+            spawn_count = 4 if LEGACY_PARITY_MODE else (2 if PI_PERF_MODE else 4)
         for _ in range(spawn_count):
             if len(self.particles) >= self.max_particles:
                 break
             base = angle_rad + math.pi
             spread = (random.random() - 0.5) * 0.6
             ang = base + spread
-            spd = 1.0 + random.random() * 0.5
-            self.particles.append({"x":tx, "y":ty, "vx":math.cos(ang)*spd, "vy":math.sin(ang)*spd,
-                                   "r":(3.0 + random.random())*scale, "a":1.0})
+            spd = 1.1 + random.random() * 0.8
+            # Emit across a small nozzle width (perpendicular to thrust axis)
+            # so large ship scales don't collapse into one giant center blob.
+            nozzle_half = max(1.0, 2.2 * scale)
+            jitter = (random.random() - 0.5) * 2.0 * nozzle_half
+            px = -sin_a * jitter
+            py = cos_a * jitter
+            # Keep particles energetic but avoid huge "blue dots" at scale 3-4.
+            radius = (1.8 + random.random() * 1.1) * (0.85 + 0.45 * scale)
+            self.particles.append(
+                {
+                    "x": tx + px,
+                    "y": ty + py,
+                    "vx": math.cos(ang) * spd,
+                    "vy": math.sin(ang) * spd,
+                    "r": radius,
+                    "a": 1.0,
+                }
+            )
 
     def _update_particles(self, dt):
         decay = math.pow(0.9, dt*60.0)  # matches JS frame-scaling
@@ -332,24 +393,30 @@ class JSBattle:
         self.particles = keep
 
     def _draw_particles(self, screen):
-        # radial gradient approximation: core + halo
+        # Exhaust look: short streak (velocity direction) + hot core + cool halo.
         for p in self.particles:
             x, y = int(p["x"]), int(p["y"])
             if x < -16 or x > self.w + 16 or y < -16 or y > self.h + 16:
                 continue
             a = clamp(p["a"], 0.0, 1.0)
             r_core = max(1, int(p["r"]))
+            trail_len = max(2, min(20, int((abs(p["vx"]) + abs(p["vy"])) * 0.55 + r_core)))
+            tx = int(p["x"] - p["vx"] * trail_len * 0.85)
+            ty = int(p["y"] - p["vy"] * trail_len * 0.85)
             if PI_PERF_MODE and not LEGACY_PARITY_MODE:
-                core = (
-                    int(180 * a),
-                    int(220 * a),
-                    int(255 * a),
-                )
+                trail = (int(40 * a), int(120 * a), int(220 * a))
+                core = (int(150 * a), int(230 * a), int(255 * a))
+                pygame.draw.line(screen, trail, (x, y), (tx, ty), max(1, r_core // 2))
                 pygame.draw.circle(screen, core, (x, y), r_core, 0)
             else:
-                r_halo = max(r_core+1, int(p["r"]*1.8))
-                pygame.draw.circle(screen, (180,220,255, int(200*a)), (x,y), r_core, 0)
-                pygame.draw.circle(screen, (0,100,255,  int( 80*a)), (x,y), r_halo, 0)
+                r_halo = max(r_core + 1, int(p["r"] * 1.8))
+                outer = (int(20 * a), int(90 * a), int(220 * a))
+                core = (int(170 * a), int(235 * a), int(255 * a))
+                hot = (int(255 * a), int(255 * a), int(220 * a))
+                pygame.draw.line(screen, outer, (x, y), (tx, ty), max(1, r_core // 2))
+                pygame.draw.circle(screen, outer, (x, y), r_halo, 0)
+                pygame.draw.circle(screen, core, (x, y), r_core, 0)
+                pygame.draw.circle(screen, hot, (x, y), max(1, r_core // 2), 0)
 
     # ---- bullets ----
     def _fire_bullet_pair(self):
@@ -376,44 +443,60 @@ class JSBattle:
             self.bullets = self.bullets[-self.max_bullets:]
 
     # ---- activation / spawn ----
+    def _spawn_ship(self, mode=None):
+        self.ship["active"] = True
+        if mode in ("normal", "broken", "combat"):
+            self.ship["mode"] = mode
+        else:
+            r = random.random()
+            self.ship["mode"] = "broken" if r < 0.1 else ("combat" if r < 0.4 else "normal")
+        self.ship["scale"] = float(random.randint(1, 4))
+
+        # edge spawn
+        margin = 100
+        e = random.randint(0, 3)
+        if e == 0:
+            sx, sy = random.random() * self.w, -margin
+        elif e == 1:
+            sx, sy = self.w + margin, random.random() * self.h
+        elif e == 2:
+            sx, sy = random.random() * self.w, self.h + margin
+        else:
+            sx, sy = -margin, random.random() * self.h
+        self.ship["x"], self.ship["y"] = sx, sy
+
+        # target near center
+        cx, cy = self.w / 2, self.h / 2
+        spread = min(self.w, self.h) * 0.25
+        tx = cx + (random.random() - 0.5) * spread
+        ty = cy + (random.random() - 0.5) * spread
+
+        # velocity toward target
+        w = self.ship_w * self.ship["scale"]
+        h = self.ship_h * self.ship["scale"]
+        dx = tx - (self.ship["x"] + w / 2)
+        dy = ty - (self.ship["y"] + h / 2)
+        dist = math.hypot(dx, dy) or 1.0
+        base_speed = (
+            (0.8 + random.random() * 0.8) * 60.0
+            if self.ship["mode"] == "broken"
+            else (2 + random.random() * 6) * 60.0
+        )
+        self.ship["vx"] = dx / dist * base_speed
+        self.ship["vy"] = dy / dist * base_speed
+        self.ship["angle"] = math.degrees(math.atan2(self.ship["vy"], self.ship["vx"]))
+        self.ship["timer"] = 0.0
+
+        # alien setup
+        if self.ship["mode"] == "combat":
+            self.alien.update({"active": True, "scale": int(self.ship["scale"]), "frame": 0, "ticker": 0.0})
+        else:
+            self.alien.update({"active": False, "x": -9999, "y": -9999, "frame": 0})
+
     def _maybe_activate_ship(self):
         if self.ship["active"]: return
         if random.random() < 0.002:   # activation gate
-            self.ship["active"] = True
-            r = random.random()
-            self.ship["mode"]  = "broken" if r < 0.1 else ("combat" if r < 0.4 else "normal")
-            self.ship["scale"] = float(random.randint(1,4))
-
-            # edge spawn
-            margin = 100
-            e = random.randint(0,3)
-            if   e == 0: sx, sy = random.random()*self.w, -margin
-            elif e == 1: sx, sy = self.w+margin,          random.random()*self.h
-            elif e == 2: sx, sy = random.random()*self.w, self.h+margin
-            else:        sx, sy = -margin,                random.random()*self.h
-            self.ship["x"], self.ship["y"] = sx, sy
-
-            # target near center
-            cx, cy = self.w/2, self.h/2
-            spread = min(self.w, self.h)*0.25
-            tx = cx + (random.random()-0.5)*spread
-            ty = cy + (random.random()-0.5)*spread
-
-            # velocity toward target
-            w = self.ship_w * self.ship["scale"]; h = self.ship_h * self.ship["scale"]
-            dx = tx - (self.ship["x"] + w/2); dy = ty - (self.ship["y"] + h/2)
-            dist = math.hypot(dx, dy) or 1.0
-            base_speed = (0.8 + random.random()*0.8)*60.0 if self.ship["mode"]=="broken" else (2 + random.random()*6)*60.0
-            self.ship["vx"] = dx/dist*base_speed
-            self.ship["vy"] = dy/dist*base_speed
-            self.ship["angle"] = math.degrees(math.atan2(self.ship["vy"], self.ship["vx"]))
-            self.ship["timer"] = 0.0
-
-            # alien setup
-            if self.ship["mode"] == "combat":
-                self.alien.update({"active":True, "scale":int(self.ship["scale"]), "frame":0, "ticker":0.0})
-            else:
-                self.alien.update({"active":False, "x":-9999, "y":-9999, "frame":0})
+            self._spawn_ship()
 
     # ---- public update/draw ----
     def update(self, dt):
@@ -446,7 +529,12 @@ class JSBattle:
             if self.bullet_timer >= self.next_bullet_interval:
                 self._fire_bullet_pair()
                 self.bullet_timer = 0.0
-                if PI_PERF_MODE and not LEGACY_PARITY_MODE:
+                if STABLE_BULLET_CADENCE:
+                    if PI_PERF_MODE and not LEGACY_PARITY_MODE:
+                        self.next_bullet_interval = 24
+                    else:
+                        self.next_bullet_interval = 16
+                elif PI_PERF_MODE and not LEGACY_PARITY_MODE:
                     self.next_bullet_interval = 12 + int(random.random() * 48)  # 12..59 frames
                 else:
                     self.next_bullet_interval = 5 + int(random.random() * 50)   # 5..54 frames
@@ -498,7 +586,7 @@ class JSBattle:
             bx, by = int(b["x"]), int(b["y"])
             if bx < -4 or bx > self.w + 4 or by < -4 or by > self.h + 4:
                 continue
-            pygame.draw.circle(screen, (255,255,255,255), (bx, by), max(1, int(b["r"])), 0)
+            pygame.draw.circle(screen, (255, 255, 255), (bx, by), max(1, int(b["r"])), 0)
         # particles
         self._draw_particles(screen)
 
@@ -564,40 +652,13 @@ if __name__ == "__main__":
     bg_map = {"red":(24,2,6), "blue":(10,16,32), "black":(0,0,0)}
     field = ArcadeBattlefield(W, H, bg_color=bg_map[args.bg])
     # expose angle-step on the crisp caches
-    field.battle.ANGLE_STEP = max(1, int(args.angle_step))
+    step = max(1, int(args.angle_step))
+    field.battle.ANGLE_STEP_DEFAULT = step
+    field.battle.ANGLE_STEP_BROKEN = step
 
     # cheat: force immediate action
-    def force_spawn(battle, mode):
-        if not mode: return
-        b = battle
-        b.ship["active"] = True
-        b.ship["mode"]   = mode
-        b.ship["scale"]  = float(random.randint(1,4))
-        if mode == "combat":
-            b.alien.update({"active":True, "scale":int(b.ship["scale"]), "frame":0, "ticker":0.0})
-        else:
-            b.alien.update({"active":False, "x":-9999, "y":-9999, "frame":0})
-        # Edge spawn → target center (same as normal path)
-        margin = 100
-        e = random.randint(0,3)
-        if   e == 0: sx, sy = random.random()*b.w, -margin
-        elif e == 1: sx, sy = b.w+margin,          random.random()*b.h
-        elif e == 2: sx, sy = random.random()*b.w, b.h+margin
-        else:        sx, sy = -margin,             random.random()*b.h
-        b.ship["x"], b.ship["y"] = sx, sy
-        cx, cy = b.w/2, b.h/2
-        spread = min(b.w, b.h)*0.25
-        tx = cx + (random.random()-0.5)*spread
-        ty = cy + (random.random()-0.5)*spread
-        w = b.ship_w*b.ship["scale"]; h = b.ship_h*b.ship["scale"]
-        dx = tx - (b.ship["x"] + w/2); dy = ty - (b.ship["y"] + h/2)
-        dist = math.hypot(dx,dy) or 1.0
-        base_speed = (0.8 + random.random()*0.8)*60.0 if mode=="broken" else (2 + random.random()*6)*60.0
-        b.ship["vx"] = dx/dist*base_speed; b.ship["vy"] = dy/dist*base_speed
-        b.ship["angle"] = math.degrees(math.atan2(b.ship["vy"], b.ship["vx"]))
-        b.ship["timer"] = 0.0
-
-    force_spawn(field.battle, args.force)
+    if args.force:
+        field.battle._spawn_ship(args.force)
 
     clock = pygame.time.Clock()
     font  = pygame.font.SysFont(None, 24)
@@ -608,9 +669,9 @@ if __name__ == "__main__":
             if e.type == pygame.QUIT: running = False
             elif e.type == pygame.KEYDOWN:
                 if e.key in (pygame.K_ESCAPE, pygame.K_q): running = False
-                elif e.key == pygame.K_c: force_spawn(field.battle, "combat")
-                elif e.key == pygame.K_b: force_spawn(field.battle, "broken")
-                elif e.key == pygame.K_n: force_spawn(field.battle, "normal")
+                elif e.key == pygame.K_c: field.battle._spawn_ship("combat")
+                elif e.key == pygame.K_b: field.battle._spawn_ship("broken")
+                elif e.key == pygame.K_n: field.battle._spawn_ship("normal")
 
         field.update(dt)
         field.draw(screen)

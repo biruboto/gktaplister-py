@@ -1,8 +1,9 @@
 import math
+import os
 
 import pygame
 
-TEXT_ANTIALIAS = False
+TEXT_ANTIALIAS = True
 
 # Header effect cache across frames
 _HEADER_TEXT = None
@@ -31,6 +32,7 @@ class NeonTextFX:
         wave_speed=3.2,
         wave_step=2,
         bounce_phase_step=0.7,
+        pair_kerning=None,
     ):
         base_white = font.render(text, True, (255, 255, 255)).convert_alpha()
         tw, th = base_white.get_size()
@@ -109,8 +111,12 @@ class NeonTextFX:
         self._char_surfs = []
         self._char_shadow_surfs = []
         self._char_x = []
+        self.pair_kerning = pair_kerning or {}
         char_x = 0
-        for ch in text:
+        for i, ch in enumerate(text):
+            if i > 0:
+                pair = text[i - 1] + ch
+                char_x += int(round(self.pair_kerning.get(pair, 0)))
             ch_white = font.render(ch, True, (255, 255, 255)).convert_alpha()
             ch_base = ch_white.copy()
             ch_base.fill((*base_color, 255), special_flags=pygame.BLEND_RGBA_MULT)
@@ -163,7 +169,8 @@ class NeonTextFX:
         self._wave_phase += self.wave_speed * dt
 
         for i, glyph in enumerate(self._char_surfs):
-            y_off = int(math.sin(self._wave_phase + i * self.bounce_phase_step) * self.wave_amplitude)
+            y_off_f = math.sin(self._wave_phase + i * self.bounce_phase_step) * self.wave_amplitude
+            y_off = int(round(y_off_f))
             gx = x + self._char_x[i]
             gy = y + y_off
             screen.blit(
@@ -174,7 +181,10 @@ class NeonTextFX:
 
 
 def draw_taplist_overlay(screen):
-    return
+    if _HEADER_TEXT is None:
+        return
+    # Animate only the header glyphs each frame; everything else stays cached/static.
+    _HEADER_TEXT.draw_wave(screen, _HEADER_POS[0], _HEADER_POS[1])
 
 
 def get_font(size, font_path=None, fallback=None):
@@ -253,24 +263,25 @@ def draw_taplist_static(
 
     if _HEADER_TEXT is None or _HEADER_THEME != (theme.name, hf_path):
         try:
-            header_font = get_fitting_font("TAP LIST", max_header_w, hf_path, start_size=140, min_size=56)
+            header_font = get_fitting_font("TAP LIST", max_header_w, hf_path, start_size=220, min_size=88)
             _HEADER_TEXT = NeonTextFX(
                 font=header_font,
                 text="TAP LIST",
                 base_color=accent,
                 outline_color=(255, 255, 255),
                 shadow_color=(0, 0, 0),
-                shadow_alpha=170,
+                shadow_alpha=0,
                 outline_px=0,
-                shadow_offset=(5, 7),
+                shadow_offset=(0, 0),
                 shimmer=False,
                 wave=True,
-                wave_amplitude=6,
+                wave_amplitude=4,
                 wave_wavelength=145,
-                wave_speed=4.4,
+                wave_speed=2.0,
                 wave_step=2,
                 bounce_phase_step=0.62,
                 extrusion_px=0,
+                pair_kerning={"TA": -16},
             )
             _HEADER_THEME = (theme.name, hf_path)
         except Exception as exc:
@@ -279,21 +290,30 @@ def draw_taplist_static(
 
     if _HEADER_TEXT:
         header_x = (screen_w - _HEADER_TEXT.base.get_width()) // 2
-        _HEADER_POS = (header_x, 30)
-        _HEADER_TEXT.draw_base(screen, _HEADER_POS[0], _HEADER_POS[1])
-        hdr_w = _HEADER_TEXT.base.get_width() + _HEADER_TEXT.pad * 2 + abs(_HEADER_TEXT.shadow_offset[0])
-        hdr_h = _HEADER_TEXT.base.get_height() + _HEADER_TEXT.pad * 2 + abs(_HEADER_TEXT.shadow_offset[1])
-        dirty_rects.append(pygame.Rect(_HEADER_POS[0] - _HEADER_TEXT.pad, _HEADER_POS[1] - _HEADER_TEXT.pad, hdr_w, hdr_h))
+        header_h = _HEADER_TEXT.base.get_height()
     else:
-        header_font = get_fitting_font("TAP LIST", max_header_w, hf_path, start_size=140, min_size=56)
+        header_font = get_fitting_font("TAP LIST", max_header_w, hf_path, start_size=220, min_size=88)
         header_w = header_font.size("TAP LIST")[0]
         header_x = (screen_w - header_w) // 2
-        _HEADER_POS = (header_x, 30)
-        draw_neon_text(screen, "TAP LIST", _HEADER_POS[0], _HEADER_POS[1], header_font, accent, 16)
         header_h = header_font.get_height()
-        dirty_rects.append(pygame.Rect(_HEADER_POS[0], _HEADER_POS[1], header_w, header_h))
 
     rows = (len(beers) + 1) // 2
+    if theme.name == "blue":
+        list_h = rows * card_height + max(0, rows - 1) * row_padding
+        header_gap = 20
+        block_h = header_h + header_gap + list_h
+        try:
+            blue_block_offset = int(os.getenv("GK_BLUE_BLOCK_Y_OFFSET", "0"))
+        except Exception:
+            blue_block_offset = 0
+        block_top = max(0, (screen_h - block_h) // 2 + blue_block_offset)
+        header_y = block_top
+        list_top = header_y + header_h + header_gap
+    else:
+        header_y = 18
+        list_top = 160
+
+    _HEADER_POS = (header_x, header_y)
     col_x = [20, screen_w // 2 + 16]
 
     for col in range(column_count):
@@ -305,7 +325,7 @@ def draw_taplist_static(
                 break
 
             beer = beers[beer_idx]
-            top = 160 + idx * (card_height + row_padding)
+            top = list_top + idx * (card_height + row_padding)
             left = col_x[col]
 
             if draw_panels:

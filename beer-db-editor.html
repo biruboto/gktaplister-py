@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="css/dbeditor.css">
 </head>
 <body>
+  <main class="page">
   <div class="editor-header">
   <img src="./images/dbeditorlogo.png" alt="Beer Database Editor" class="editor-logo">
 </div>
@@ -54,8 +55,8 @@
     </div>
   </div>
   <!-- Animation space -->
-<div id="beerCardAnimationArea" style="min-height:200px; margin:1.5em 0;">
-  <canvas id="tapperAnim" width="290" height="100" style="background:#203c56;display:block;margin:0 auto;border-radius:10px;"></canvas>
+<div id="beerCardAnimationArea" class="beer-card-animation-area">
+  <canvas id="tapperAnim" width="290" height="100"></canvas>
 </div>
 
   <div class="button-bar">
@@ -66,7 +67,7 @@
 </form>
 </div>
 
-  <table id="beerTable" class="beer-table" style="display:none;">
+  <table id="beerTable" class="beer-table">
     <thead>
       <tr>
         <th>brewery</th><th>name</th><th>city</th><th>st</th>
@@ -75,7 +76,7 @@
     </thead>
     <tbody></tbody>
   </table>
-  <button type="button" id="saveAllBtn" style="display:none; margin: 1em auto 0 auto; display:block;">Save All</button>
+  <button type="button" id="saveAllBtn">Save All</button>
 
 
 <script>
@@ -219,7 +220,7 @@ beerDropdown.onchange = () => {
     document.getElementById('saveAllBtn').style.display = "none";
   } else if (beerDropdown.value === "-1") {
     beerCard.style.display = "none";
-    beerTable.style.display = "";
+    beerTable.style.display = "table";
     document.getElementById('saveAllBtn').style.display = "block";
     buildBeerTable();
   } else if (beerDropdown.value === "-2") {
@@ -581,5 +582,6 @@ let loaded = 0;
 });
 
 </script>
+  </main>
 </body>
 </html>

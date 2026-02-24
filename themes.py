@@ -15,7 +15,7 @@ class Theme:
 # Start with your current red setup
 RED = Theme(
     name="red",
-    bg_color=(19, 1, 1),
+    bg_color=(14, 9, 9),
     accent=(218, 30, 55),
     dim_white=(180, 180, 180),
     logo_size=130,

@@ -1,8 +1,10 @@
 import json
 import math
+import os
 import random
 import threading
 import time
+from collections import deque
 from pathlib import Path
 
 import pygame
@@ -13,17 +15,59 @@ from systems.fetch import fetch_text, is_url
 from systems.logos import build_logo_cache
 from systems.ui import draw_taplist_overlay, draw_taplist_static
 
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw.strip())
+    except Exception:
+        return default
+
+
+def _env_float(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return float(raw.strip())
+    except Exception:
+        return default
+
+
 BEERDB_FILE = "json/beer-database.json"
-TARGET_FPS = 60
-TOKEN_POLL_SECONDS = 0.75
-BATTLEFIELD_RENDER_SCALE = 0.75
-PERF_LOG_FILE = "perf.log"
-USE_VSYNC = False
+TARGET_FPS = max(0, _env_int("GK_TARGET_FPS", 60))
+TOKEN_POLL_SECONDS = max(0.2, _env_float("GK_TOKEN_POLL_SECONDS", 0.75))
+POLL_TAPLIST_TIMEOUT_S = max(0.5, _env_float("GK_POLL_TAPLIST_TIMEOUT_S", 2.0))
+POLL_BEERDB_TIMEOUT_S = max(0.5, _env_float("GK_POLL_BEERDB_TIMEOUT_S", 2.5))
+BATTLEFIELD_RENDER_SCALE = min(1.0, max(0.4, _env_float("GK_RENDER_SCALE", 0.75)))
+PERF_LOG_FILE = os.getenv("GK_PERF_LOG_FILE", "perf.log")
+USE_VSYNC = _env_bool("GK_USE_VSYNC", False)
 UI_COLORKEY = (1, 0, 1)
-UI_USE_COLORKEY_CACHE = True
-UI_FONT_PATH = "fonts/EightBit Atari-Fat3.ttf"
-UI_OPAQUE_PANELS = False
-UI_FULL_BLIT = True
+UI_USE_COLORKEY_CACHE = _env_bool("GK_UI_COLORKEY_CACHE", True)
+LEGACY_UI_FONT_PATH = os.getenv("GK_UI_FONT_PATH")
+UI_HEADER_FONT_PATH = os.getenv(
+    "GK_UI_HEADER_FONT_PATH", LEGACY_UI_FONT_PATH or "fonts/WtfNewStrike.ttf"
+)
+UI_BEER_FONT_PATH = os.getenv(
+    "GK_UI_BEER_FONT_PATH", LEGACY_UI_FONT_PATH or "fonts/MagistralBold.otf"
+)
+UI_INFO_FONT_PATH = os.getenv(
+    "GK_UI_INFO_FONT_PATH", LEGACY_UI_FONT_PATH or "fonts/Orbitron.otf"
+)
+UI_OPAQUE_PANELS = _env_bool("GK_UI_OPAQUE_PANELS", False)
+UI_FULL_BLIT = _env_bool("GK_UI_FULL_BLIT", True)
+ALLOW_ESCAPE = _env_bool("GK_ALLOW_ESCAPE", True)
+SHOW_FPS = _env_bool("GK_SHOW_FPS", True)
+USE_BUSY_LOOP = _env_bool("GK_USE_BUSY_LOOP", True)
 
 
 def urlify(path_or_url: str) -> str:
@@ -32,16 +76,18 @@ def urlify(path_or_url: str) -> str:
     return f"{SERVER_BASE.rstrip('/')}/{path_or_url.lstrip('./').lstrip('/')}"
 
 
-def load_json(src: str, ttl: int = 15, timeout_s: float = 10):
+def load_json(src: str, ttl: int = 15, timeout_s: float = 10, allow_stale_on_error: bool = True):
     if is_url(src):
-        local_path = fetch_text(src, ttl=ttl, timeout_s=timeout_s)
+        local_path = fetch_text(src, ttl=ttl, timeout_s=timeout_s, allow_stale_on_error=allow_stale_on_error)
         return json.loads(Path(local_path).read_text(encoding="utf-8"))
 
     # For relative paths, prefer the server source of truth, then fall back to local file.
     try:
-        local_path = fetch_text(urlify(src), ttl=ttl, timeout_s=timeout_s)
+        local_path = fetch_text(urlify(src), ttl=ttl, timeout_s=timeout_s, allow_stale_on_error=allow_stale_on_error)
         return json.loads(Path(local_path).read_text(encoding="utf-8"))
     except Exception:
+        if not allow_stale_on_error:
+            raise
         local = Path(src)
         if local.exists():
             return json.loads(local.read_text(encoding="utf-8"))
@@ -59,6 +105,14 @@ def merge_taplist_with_db(taplist: dict, beerdb: list[dict]) -> list[dict]:
         entry["soldOut"] = slot.get("soldOut", False)
         out.append(entry)
     return out
+
+
+def taplist_signature(taplist: dict) -> str:
+    beers = taplist.get("beers", [])
+    try:
+        return json.dumps(beers, sort_keys=True, separators=(",", ":"))
+    except Exception:
+        return str(beers)
 
 
 def force_spawn_mode(arcade_field: ArcadeBattlefield, mode: str):
@@ -110,16 +164,17 @@ def force_spawn_mode(arcade_field: ArcadeBattlefield, mode: str):
 
 def run(theme):
     pygame.init()
-    pygame.mouse.set_visible(False)
-    pygame.event.set_blocked(
-        [pygame.MOUSEMOTION, pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP]
-    )
+    pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN])
 
     display_flags = pygame.FULLSCREEN | pygame.DOUBLEBUF
     if USE_VSYNC:
         screen = pygame.display.set_mode((0, 0), display_flags, vsync=1)
     else:
         screen = pygame.display.set_mode((0, 0), display_flags)
+    try:
+        pygame.mouse.set_visible(False)
+    except Exception:
+        pass
     width, height = screen.get_size()
     clock = pygame.time.Clock()
 
@@ -127,13 +182,14 @@ def run(theme):
     beerdb = load_json(BEERDB_FILE, ttl=0)
     beers = merge_taplist_with_db(taplist, beerdb)
     current_refresh_token = taplist.get("refreshToken")
+    current_taplist_sig = taplist_signature(taplist)
 
     logo_cache = build_logo_cache(beers, theme.logo_size, theme)
     battle_w = max(640, int(width * BATTLEFIELD_RENDER_SCALE))
     battle_h = max(360, int(height * BATTLEFIELD_RENDER_SCALE))
     battlefield = ArcadeBattlefield(battle_w, battle_h, bg_color=theme.bg_color)
     battlefield_surface = pygame.Surface((battle_w, battle_h)).convert()
-    debug_font = pygame.font.SysFont(None, 24)
+    debug_font = pygame.font.SysFont(None, 24) if SHOW_FPS else None
 
     if UI_USE_COLORKEY_CACHE:
         ui_static = pygame.Surface((width, height)).convert()
@@ -156,6 +212,7 @@ def run(theme):
         "frame_ms": 0.0,
         "frames": 0,
     }
+    frame_samples = deque(maxlen=240)
     last_perf_report = time.perf_counter()
 
     # Start a fresh perf log per run.
@@ -172,7 +229,18 @@ def run(theme):
         except Exception:
             pass
 
-    log_debug(f"[debug] vsync={USE_VSYNC} target_fps={TARGET_FPS}")
+    log_debug(
+        "[debug] "
+        f"vsync={USE_VSYNC} target_fps={TARGET_FPS} "
+        f"render_scale={BATTLEFIELD_RENDER_SCALE:.2f} "
+        f"token_poll_s={TOKEN_POLL_SECONDS:.2f} "
+        f"poll_taplist_timeout_s={POLL_TAPLIST_TIMEOUT_S:.2f} "
+        f"poll_beerdb_timeout_s={POLL_BEERDB_TIMEOUT_S:.2f} "
+        f"taplist_src={urlify(theme.json_path)} "
+        f"beerdb_src={urlify(BEERDB_FILE)} "
+        f"ui_colorkey={UI_USE_COLORKEY_CACHE} ui_full_blit={UI_FULL_BLIT} "
+        f"allow_escape={ALLOW_ESCAPE} show_fps={SHOW_FPS} busy_loop={USE_BUSY_LOOP}"
+    )
 
     poll_lock = threading.Lock()
     stop_poll = threading.Event()
@@ -180,18 +248,36 @@ def run(theme):
 
     def poll_worker():
         last_seen_token = current_refresh_token
+        last_seen_sig = current_taplist_sig
+        poll_errors = 0
         while not stop_poll.wait(TOKEN_POLL_SECONDS):
             try:
-                latest_taplist = load_json(theme.json_path, ttl=0, timeout_s=0.5)
+                latest_taplist = load_json(
+                    theme.json_path,
+                    ttl=0,
+                    timeout_s=POLL_TAPLIST_TIMEOUT_S,
+                    allow_stale_on_error=False,
+                )
                 latest_token = latest_taplist.get("refreshToken")
-                if latest_token == last_seen_token:
+                latest_sig = taplist_signature(latest_taplist)
+                if latest_token == last_seen_token and latest_sig == last_seen_sig:
                     continue
-                latest_beerdb = load_json(BEERDB_FILE, ttl=0, timeout_s=0.8)
+                latest_beerdb = load_json(
+                    BEERDB_FILE,
+                    ttl=0,
+                    timeout_s=POLL_BEERDB_TIMEOUT_S,
+                    allow_stale_on_error=False,
+                )
                 merged = merge_taplist_with_db(latest_taplist, latest_beerdb)
                 with poll_lock:
                     poll_state["pending"] = (latest_token, merged)
                 last_seen_token = latest_token
-            except Exception:
+                last_seen_sig = latest_sig
+                poll_errors = 0
+            except Exception as exc:
+                poll_errors += 1
+                if poll_errors <= 3 or poll_errors % 10 == 0:
+                    log_debug(f"[warn] poll fetch failed ({poll_errors}): {exc}")
                 # Keep rendering smooth even if network polling fails intermittently.
                 pass
 
@@ -200,12 +286,15 @@ def run(theme):
 
     running = True
     while running:
-        dt = clock.tick(TARGET_FPS if TARGET_FPS > 0 else 0) / 1000.0
+        if USE_BUSY_LOOP:
+            dt = clock.tick_busy_loop(TARGET_FPS if TARGET_FPS > 0 else 0) / 1000.0
+        else:
+            dt = clock.tick(TARGET_FPS if TARGET_FPS > 0 else 0) / 1000.0
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
+                if event.key == pygame.K_ESCAPE and ALLOW_ESCAPE:
                     running = False
                 elif event.key == pygame.K_c:
                     force_spawn_mode(battlefield, "combat")
@@ -235,6 +324,9 @@ def run(theme):
             current_refresh_token, beers = pending
             logo_cache = build_logo_cache(beers, theme.logo_size, theme)
             ui_dirty = True
+            log_debug(
+                f"[update] taplist change applied refreshToken={current_refresh_token!r} items={len(beers)}"
+            )
 
         frame_t0 = time.perf_counter()
         t0 = frame_t0
@@ -253,9 +345,9 @@ def run(theme):
                 theme,
                 width,
                 height,
-                beer_font_path=UI_FONT_PATH,
-                info_font_path=UI_FONT_PATH,
-                header_font_path=UI_FONT_PATH,
+                beer_font_path=UI_BEER_FONT_PATH,
+                info_font_path=UI_INFO_FONT_PATH,
+                header_font_path=UI_HEADER_FONT_PATH,
                 draw_panels=UI_OPAQUE_PANELS,
                 panel_color=tuple(max(0, c - 18) for c in theme.bg_color),
                 panel_border=tuple(min(255, int(c * 0.55) + 30) for c in theme.accent),
@@ -281,8 +373,9 @@ def run(theme):
                     screen.blit(ui_static, rect.topleft, rect)
             draw_taplist_overlay(screen)
 
-        fps_text = debug_font.render(f"{clock.get_fps():.1f} FPS", True, (120, 255, 120))
-        screen.blit(fps_text, (10, 8))
+        if SHOW_FPS and debug_font is not None:
+            fps_text = debug_font.render(f"{clock.get_fps():.1f} FPS", True, (120, 255, 120))
+            screen.blit(fps_text, (10, 8))
         t4 = time.perf_counter()
         pygame.display.flip()
         t5 = time.perf_counter()
@@ -292,16 +385,23 @@ def run(theme):
         perf_acc["scale_ms"] += (t3 - t2) * 1000.0
         perf_acc["ui_ms"] += (t4 - t3) * 1000.0
         perf_acc["flip_ms"] += (t5 - t4) * 1000.0
-        perf_acc["frame_ms"] += (t5 - frame_t0) * 1000.0
+        frame_ms = (t5 - frame_t0) * 1000.0
+        perf_acc["frame_ms"] += frame_ms
         perf_acc["frames"] += 1
+        frame_samples.append(frame_ms)
 
         now = time.perf_counter()
         if perf_logging and (now - last_perf_report) >= 2.0 and perf_acc["frames"] > 0:
             n = perf_acc["frames"]
+            sorted_samples = sorted(frame_samples)
+            p95 = sorted_samples[int(len(sorted_samples) * 0.95)] if sorted_samples else 0.0
+            p99 = sorted_samples[int(len(sorted_samples) * 0.99)] if sorted_samples else 0.0
             log_debug(
                 "[perf] "
                 f"fps={clock.get_fps():.1f} "
                 f"frame={perf_acc['frame_ms']/n:.2f}ms "
+                f"p95={p95:.2f}ms "
+                f"p99={p99:.2f}ms "
                 f"update={perf_acc['update_ms']/n:.2f}ms "
                 f"draw={perf_acc['draw_ms']/n:.2f}ms "
                 f"scale={perf_acc['scale_ms']/n:.2f}ms "

@@ -1,10 +1,10 @@
 {
   "theme": "blue side",
-  "refreshToken": "sgdm4ticu4k",
+  "refreshToken": "7vlj36v98hr",
   "beers": [
     {
       "id": "p7o6yl3m",
-      "soldOut": false
+      "soldOut": true
     },
     {
       "id": "cka7ifts",

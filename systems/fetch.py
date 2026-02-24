@@ -23,7 +23,7 @@ def _cache_path(url: str, subdir: str, ext_hint: str | None = None) -> Path:
     p.mkdir(parents=True, exist_ok=True)
     return p / f"{h}_{name}"
 
-def fetch_text(url: str, ttl=15, timeout_s=10) -> Path:
+def fetch_text(url: str, ttl=15, timeout_s=10, allow_stale_on_error=True) -> Path:
     dest = _cache_path(url, "json", ".json")
     if dest.exists() and (time.time() - dest.stat().st_mtime) < ttl:
         return dest
@@ -31,7 +31,7 @@ def fetch_text(url: str, ttl=15, timeout_s=10) -> Path:
         r = requests.get(url, timeout=timeout_s)
         r.raise_for_status()
     except Exception:
-        if dest.exists():
+        if allow_stale_on_error and dest.exists():
             # Keep the display alive with stale data during temporary network/server failures.
             return dest
         raise
