@@ -38,6 +38,20 @@ def fetch_text(url: str, ttl=15, timeout_s=10, allow_stale_on_error=True) -> Pat
     dest.write_text(r.text, encoding="utf-8")
     return dest
 
+def fetch_meta(url: str, timeout_s=5):
+    try:
+        r = requests.head(url, timeout=timeout_s, allow_redirects=True)
+        r.raise_for_status()
+    except Exception:
+        return None
+
+    etag = (r.headers.get("ETag") or "").strip()
+    last_modified = (r.headers.get("Last-Modified") or "").strip()
+    content_length = (r.headers.get("Content-Length") or "").strip()
+    if not (etag or last_modified or content_length):
+        return None
+    return (etag, last_modified, content_length)
+
 def fetch_binary(url: str, subdir="assets", ttl=300, timeout_s=15) -> Path:
     dest = _cache_path(url, subdir, None)
     if dest.exists() and (time.time() - dest.stat().st_mtime) < ttl:

@@ -22,35 +22,36 @@
   <form id="beerForm" class="beer-fields" autocomplete="off">
   <div class="beer-card-grid">
     <!-- Row 1 -->
-    <label>brewery
+    <label class="field-brewery">brewery
       <input id="brewery" autocomplete="off">
     </label>
-    <label>beer
+    <label class="field-title">beer
       <input id="title" autocomplete="off">
     </label>
     <div class="logo-cell" rowspan="3">
-      <div class="logo-preview-square">
+      <div class="logo-preview-square" id="logoPreviewTrigger" role="button" tabindex="0" aria-label="Choose logo">
         <img id="logoPreview" src="" alt="Brewery logo" style="display:none;">
+        <span class="logo-preview-hint" id="logoPreviewHint">click to choose logo</span>
+        <select id="logoPath" class="logo-picker-overlay" aria-label="Choose logo"></select>
       </div>
     </div>
     <!-- Row 2 -->
-    <label>style
-      <input id="style" autocomplete="off">
-    </label>
-    <label>abv
-      <input id="abv" autocomplete="off" pattern="^\d{1,2}\.\d$" title="Format: '6.5' or '10.2'" maxlength="4" inputmode="decimal">
-    </label>
+    <div class="field-pair field-pair-left">
+      <label class="field-style">style
+        <input id="style" autocomplete="off">
+      </label>
+      <label class="field-abv">abv
+        <input id="abv" autocomplete="off" pattern="^\d{1,2}\.\d$" title="Format: '6.5' or '10.2'" maxlength="4" inputmode="decimal">
+      </label>
+    </div>
     <!-- (Logo still in col 3) -->
     <!-- Row 3 -->
-    <label>city
-      <input id="city" autocomplete="off">
-    </label>
-    <label class="state-label">state
-      <input id="state" autocomplete="off">
-    </label>
-    <div class="logo-dropdown-under">
-      <label>logo
-        <select id="logoPath"></select>
+    <div class="field-pair field-pair-right">
+      <label class="field-city">city
+        <input id="city" autocomplete="off">
+      </label>
+      <label class="field-state state-label">state
+        <input id="state" autocomplete="off">
       </label>
     </div>
   </div>
@@ -95,6 +96,14 @@ const statusDiv = document.getElementById('status');
 const tbody = document.querySelector("#beerTable tbody");
 const beerTable = document.getElementById('beerTable');
 const backToListBtn = document.getElementById('backToList');
+const logoPreviewTrigger = document.getElementById('logoPreviewTrigger');
+const logoPreviewHint = document.getElementById('logoPreviewHint');
+
+function compareBeerNames(a, b) {
+  const aStr = ((a.brewery || "") + " " + (a.title || "")).trim();
+  const bStr = ((b.brewery || "") + " " + (b.title || "")).trim();
+  return aStr.localeCompare(bStr, undefined, { sensitivity: 'base' });
+}
 
 function generateBeerId() {
   // 8 chars: a-z, 0-9
@@ -129,15 +138,10 @@ function populateDropdown() {
   <option value="-1">🍻 = show all beers =</option>
   <option value="-2">🍺 = add new beer =</option>
 `;
-// Make a *copy* so you don't alter the main array:
+  // Make a copy so dropdown order stays alphabetical without mutating storage order.
   let sortedBeers = beers
-    .map((beer, idx) => ({ beer, idx })) // keep original index!
-    .sort((a, b) => {
-      // Sort by brewery, then title, both case-insensitive:
-      const aStr = (a.beer.brewery || "") + " " + (a.beer.title || "");
-      const bStr = (b.beer.brewery || "") + " " + (b.beer.title || "");
-      return aStr.localeCompare(bStr, undefined, { sensitivity: 'base' });
-    });
+    .map((beer, idx) => ({ beer, idx }))
+    .sort((a, b) => compareBeerNames(a.beer, b.beer));
 
   sortedBeers.forEach(({ beer, idx }) => {
     let label = `${beer.brewery || "???"} ${beer.title || "???"}`;
@@ -160,9 +164,13 @@ function populateLogoDropdown(selected = "") {
 // Build the table for show-all-beers view
 function buildBeerTable() {
   tbody.innerHTML = "";
-  beers.forEach((beer, idx) => {
+  beers
+    .map((beer, idx) => ({ beer, idx }))
+    .sort((a, b) => compareBeerNames(a.beer, b.beer))
+    .forEach(({ beer, idx }) => {
     const tr = document.createElement('tr');
-    tr.dataset.id = beer.id || ""; // <-- preserves id even if not visible in the table!
+    tr.dataset.id = beer.id || "";
+    tr.dataset.sourceIndex = String(idx);
     fields.forEach(f => {
       const td = document.createElement('td');
       if (f === "logoPath") {
@@ -170,6 +178,7 @@ function buildBeerTable() {
       } else {
         let inputClass = "beer-input";
         if (f === "state" || f === "abv") inputClass += " beer-short";
+        if (f === "city") inputClass += " beer-city";
         if (f === "state") inputClass += " beer-state";
         if (f === "abv") inputClass += " beer-abv";
         td.innerHTML = `<input class="${inputClass}" value="${beer[f] ? beer[f] : ""}" placeholder="${f}">`;
@@ -191,6 +200,7 @@ function showBlankBeerCard() {
       populateLogoDropdown();
       logoPreview.src = "";
       logoPreview.style.display = "none";
+      logoPreviewHint.style.display = "";
     } else {
       document.getElementById(f).value = "";
     }
@@ -246,8 +256,10 @@ function fillBeerCard(idx) {
       if (beer[f]) {
         logoPreview.src = `/logos/${beer[f]}`;
         logoPreview.style.display = "";
+        logoPreviewHint.style.display = "none";
       } else {
         logoPreview.style.display = "none";
+        logoPreviewHint.style.display = "";
       }
     } else {
       document.getElementById(f).value = beer[f] || "";
@@ -263,8 +275,8 @@ document.getElementById('logoPath').onchange = function() {
   const path = this.value;
   logoPreview.src = path ? `/logos/${path.replace(/^.*[\\/]/, "")}` : "";
   logoPreview.style.display = path ? "" : "none";
+  logoPreviewHint.style.display = path ? "none" : "";
 };
-
 
 // Handle "back to list" (reset to no selection)
 backToListBtn.onclick = () => {
@@ -370,12 +382,12 @@ document.getElementById('backupDbBtn').onclick = async function() {
 };
 
 document.getElementById('saveAllBtn').onclick = async function() {
-  // Rebuild beers array from table rows
+  // Rebuild beers from table edits, then restore original storage order.
   let newBeers = [];
   tbody.querySelectorAll('tr').forEach(tr => {
     let beer = {};
-    // ⬇️ Always keep the ID from the row if present
     beer.id = tr.dataset.id || generateBeerId();
+    beer._sourceIndex = Number(tr.dataset.sourceIndex || -1);
     fields.forEach((f, i) => {
       if (f === "logoPath") {
         beer[f] = tr.children[i].querySelector('select').value.trim();
@@ -383,10 +395,10 @@ document.getElementById('saveAllBtn').onclick = async function() {
         beer[f] = tr.children[i].querySelector('input').value.trim();
       }
     });
-    // Only add non-empty beers
     if (Object.values(beer).some(val => val)) newBeers.push(beer);
   });
-  beers = newBeers;
+  newBeers.sort((a, b) => a._sourceIndex - b._sourceIndex);
+  beers = newBeers.map(({ _sourceIndex, ...beer }) => beer);
 
   // POST to API
   const res = await fetch(apiURL, {

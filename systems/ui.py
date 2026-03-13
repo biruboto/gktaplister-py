@@ -207,17 +207,6 @@ def get_fitting_font(text, max_width, font_path, start_size=64, min_size=16):
     return get_font(min_size, font_path)
 
 
-def draw_neon_text(screen, text, x, y, font, color, glow_size=12):
-    for dx in range(-glow_size, glow_size + 1, 2):
-        for dy in range(-glow_size, glow_size + 1, 2):
-            if dx * dx + dy * dy < glow_size * glow_size:
-                glow = font.render(text, TEXT_ANTIALIAS, color)
-                glow.set_alpha(36)
-                screen.blit(glow, (x + dx, y + dy))
-    label = font.render(text, TEXT_ANTIALIAS, color)
-    screen.blit(label, (x, y))
-
-
 def draw_logo_placeholder(screen, x, y, size, color):
     pygame.draw.rect(screen, color, (x, y, size, size), border_radius=int(size * 0.22), width=2)
     pygame.draw.line(screen, color, (x + 8, y + size // 2), (x + size - 8, y + size // 2), width=2)
@@ -310,7 +299,7 @@ def draw_taplist_static(
         header_y = block_top
         list_top = header_y + header_h + header_gap
     else:
-        header_y = 18
+        header_y = -2
         list_top = 160
 
     _HEADER_POS = (header_x, header_y)

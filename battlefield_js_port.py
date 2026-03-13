@@ -630,7 +630,8 @@ class ArcadeBattlefield:
 # ---------- Standalone runner ----------
 if __name__ == "__main__":
     import argparse
-    pygame.init()
+    pygame.display.init()
+    pygame.font.init()
     parser = argparse.ArgumentParser()
     parser.add_argument("--fullscreen", action="store_true", help="Fullscreen")
     parser.add_argument("--size", default="800x480", help="WxH if windowed")
@@ -680,4 +681,5 @@ if __name__ == "__main__":
         screen.blit(fps, (10, 10))
         pygame.display.flip()
 
-    pygame.quit()
+    pygame.font.quit()
+    pygame.display.quit()

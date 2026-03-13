@@ -11,7 +11,7 @@ import pygame
 
 from battlefield_js_port import ArcadeBattlefield
 from settings import SERVER_BASE
-from systems.fetch import fetch_text, is_url
+from systems.fetch import fetch_meta, fetch_text, is_url
 from systems.logos import build_logo_cache
 from systems.ui import draw_taplist_overlay, draw_taplist_static
 
@@ -69,6 +69,17 @@ ALLOW_ESCAPE = _env_bool("GK_ALLOW_ESCAPE", True)
 SHOW_FPS = _env_bool("GK_SHOW_FPS", True)
 USE_BUSY_LOOP = _env_bool("GK_USE_BUSY_LOOP", True)
 
+# Lux Raphael
+SIGIL_HEX = (
+    "52 61 70 68 61 65 6C 20 61 72 63 68 61 6E 67 65 6C 75 73 2C 20 63 75 73 74 "
+    "6F 73 20 68 75 69 75 73 20 74 61 62 65 72 6E 61 65 20 65 73 74 6F 2E 20 44 "
+    "61 20 73 61 6C 75 74 65 6D 2C 20 70 72 6F 73 70 65 72 69 74 61 74 65 6D 2C "
+    "20 65 74 20 73 70 69 72 69 74 75 6D 20 6C 61 65 74 69 74 69 61 65 20 6F 6D "
+    "6E 69 62 75 73 20 71 75 69 20 68 69 63 20 6C 61 62 6F 72 61 6E 74 2C 20 62 "
+    "69 62 75 6E 74 2C 20 65 74 20 6C 75 64 75 6E 74 2E 20 4C 75 78 20 74 75 61 "
+    "20 73 69 74 20 6E 6F 62 69 73 63 75 6D 20 73 65 6D 70 65 72 2E"
+)
+
 
 def urlify(path_or_url: str) -> str:
     if is_url(path_or_url):
@@ -113,6 +124,29 @@ def taplist_signature(taplist: dict) -> str:
         return json.dumps(beers, sort_keys=True, separators=(",", ":"))
     except Exception:
         return str(beers)
+
+
+def json_signature(data) -> str:
+    try:
+        return json.dumps(data, sort_keys=True, separators=(",", ":"))
+    except Exception:
+        return str(data)
+
+
+def source_meta(src: str, timeout_s: float):
+    if is_url(src):
+        return fetch_meta(src, timeout_s=timeout_s)
+
+    url = urlify(src)
+    meta = fetch_meta(url, timeout_s=timeout_s)
+    if meta is not None:
+        return meta
+
+    local = Path(src)
+    if not local.exists():
+        return None
+    stat = local.stat()
+    return ("", str(int(stat.st_mtime_ns)), str(stat.st_size))
 
 
 def force_spawn_mode(arcade_field: ArcadeBattlefield, mode: str):
@@ -163,7 +197,8 @@ def force_spawn_mode(arcade_field: ArcadeBattlefield, mode: str):
 
 
 def run(theme):
-    pygame.init()
+    pygame.display.init()
+    pygame.font.init()
     pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN])
 
     display_flags = pygame.FULLSCREEN | pygame.DOUBLEBUF
@@ -183,6 +218,7 @@ def run(theme):
     beers = merge_taplist_with_db(taplist, beerdb)
     current_refresh_token = taplist.get("refreshToken")
     current_taplist_sig = taplist_signature(taplist)
+    current_beerdb_sig = json_signature(beerdb)
 
     logo_cache = build_logo_cache(beers, theme.logo_size, theme)
     battle_w = max(640, int(width * BATTLEFIELD_RENDER_SCALE))
@@ -247,32 +283,57 @@ def run(theme):
     poll_state = {"pending": None}
 
     def poll_worker():
+        cached_taplist = taplist
+        cached_beerdb = beerdb
         last_seen_token = current_refresh_token
         last_seen_sig = current_taplist_sig
+        last_seen_beerdb_sig = current_beerdb_sig
+        last_seen_tap_meta = source_meta(theme.json_path, POLL_TAPLIST_TIMEOUT_S)
+        last_seen_beerdb_meta = source_meta(BEERDB_FILE, POLL_BEERDB_TIMEOUT_S)
         poll_errors = 0
         while not stop_poll.wait(TOKEN_POLL_SECONDS):
             try:
-                latest_taplist = load_json(
-                    theme.json_path,
-                    ttl=0,
-                    timeout_s=POLL_TAPLIST_TIMEOUT_S,
-                    allow_stale_on_error=False,
-                )
-                latest_token = latest_taplist.get("refreshToken")
-                latest_sig = taplist_signature(latest_taplist)
-                if latest_token == last_seen_token and latest_sig == last_seen_sig:
+                tap_changed = False
+                beerdb_changed = False
+
+                current_tap_meta = source_meta(theme.json_path, POLL_TAPLIST_TIMEOUT_S)
+                if current_tap_meta is None or current_tap_meta != last_seen_tap_meta:
+                    latest_taplist = load_json(
+                        theme.json_path,
+                        ttl=0,
+                        timeout_s=POLL_TAPLIST_TIMEOUT_S,
+                        allow_stale_on_error=False,
+                    )
+                    latest_token = latest_taplist.get("refreshToken")
+                    latest_sig = taplist_signature(latest_taplist)
+                    last_seen_tap_meta = current_tap_meta
+                    if latest_token != last_seen_token or latest_sig != last_seen_sig:
+                        cached_taplist = latest_taplist
+                        last_seen_token = latest_token
+                        last_seen_sig = latest_sig
+                        tap_changed = True
+
+                current_beerdb_meta = source_meta(BEERDB_FILE, POLL_BEERDB_TIMEOUT_S)
+                if current_beerdb_meta is None or current_beerdb_meta != last_seen_beerdb_meta:
+                    latest_beerdb = load_json(
+                        BEERDB_FILE,
+                        ttl=0,
+                        timeout_s=POLL_BEERDB_TIMEOUT_S,
+                        allow_stale_on_error=False,
+                    )
+                    latest_beerdb_sig = json_signature(latest_beerdb)
+                    last_seen_beerdb_meta = current_beerdb_meta
+                    if latest_beerdb_sig != last_seen_beerdb_sig:
+                        cached_beerdb = latest_beerdb
+                        last_seen_beerdb_sig = latest_beerdb_sig
+                        beerdb_changed = True
+
+                if not tap_changed and not beerdb_changed:
                     continue
-                latest_beerdb = load_json(
-                    BEERDB_FILE,
-                    ttl=0,
-                    timeout_s=POLL_BEERDB_TIMEOUT_S,
-                    allow_stale_on_error=False,
-                )
-                merged = merge_taplist_with_db(latest_taplist, latest_beerdb)
+
+                merged = merge_taplist_with_db(cached_taplist, cached_beerdb)
                 with poll_lock:
-                    poll_state["pending"] = (latest_token, merged)
-                last_seen_token = latest_token
-                last_seen_sig = latest_sig
+                    poll_state["pending"] = (last_seen_token, merged)
                 poll_errors = 0
             except Exception as exc:
                 poll_errors += 1
@@ -413,4 +474,5 @@ def run(theme):
             last_perf_report = now
 
     stop_poll.set()
-    pygame.quit()
+    pygame.font.quit()
+    pygame.display.quit()

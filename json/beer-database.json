@@ -22,7 +22,7 @@
     {
         "id": "zca6ix8n",
         "brewery": "gigantic",
-        "title": "sassy pony pale test",
+        "title": "sassy pony pale",
         "city": "portland",
         "state": "or",
         "style": "american pale ale",
@@ -30,14 +30,14 @@
         "logoPath": "gigantic.svg"
     },
     {
+        "id": "0fbc3j77",
         "brewery": "2 towns",
         "title": "brightcider",
         "city": "corvallis",
         "state": "or",
         "style": "hard apple cider",
         "abv": "6.0",
-        "logoPath": "2towns.svg",
-        "id": "0fbc3j77"
+        "logoPath": "2towns.svg"
     },
     {
         "id": "p7o6yl3m",
@@ -72,7 +72,7 @@
     {
         "id": "t6hebfc6",
         "brewery": "ablis",
-        "title": "cran blood orange cbd",
+        "title": "cran blood orange (cbd)",
         "city": "bend",
         "state": "or",
         "style": "sparkling cbd soda",
@@ -118,5 +118,65 @@
         "style": "american stout",
         "abv": "5.7",
         "logoPath": "gigantic.svg"
+    },
+    {
+        "id": "c47kmcav",
+        "brewery": "boneyard",
+        "title": "rpm ipa",
+        "city": "bend",
+        "state": "or",
+        "style": "american ipa",
+        "abv": "6.5",
+        "logoPath": "boneyard.svg"
+    },
+    {
+        "id": "r28gjn9j",
+        "brewery": "hopworks",
+        "title": "beer time pils",
+        "city": "portland",
+        "state": "or",
+        "style": "german-style pilsner",
+        "abv": "4.8",
+        "logoPath": "hopworks.svg"
+    },
+    {
+        "id": "5csrf9n2",
+        "brewery": "sunriver",
+        "title": "fuzztail hefeweizen",
+        "city": "sunriver",
+        "state": "or",
+        "style": "hefeweizen",
+        "abv": "5.0",
+        "logoPath": "sunriver.svg"
+    },
+    {
+        "id": "c685fnrf",
+        "brewery": "deschutes",
+        "title": "black butte",
+        "city": "bend",
+        "state": "or",
+        "style": "american porter",
+        "abv": "5.5",
+        "logoPath": "deschutes.svg"
+    },
+    {
+        "id": "ax2it5ps",
+        "brewery": "fort george",
+        "title": "city of dreams",
+        "city": "astoria",
+        "state": "or",
+        "style": "american hazy pale ale",
+        "abv": "5.5",
+        "logoPath": "ftgeorge.svg"
+    },
+    {
+        "id": "jz00gz2r",
+        "brewery": "stormbreaker",
+        "title": "total rekolsch",
+        "city": "portland",
+        "state": "or",
+        "style": "kolsch",
+        "abv": "5.2",
+        "logoPath": "stormbreaker.svg"
     }
 ]

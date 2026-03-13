@@ -139,19 +139,19 @@ body {
 .beer-card {
   display: none;
   margin: 0 auto;
-  max-width: 980px;
+  max-width: 920px;
   border-radius: 16px;
   border: 1px solid #5e7696;
   background: linear-gradient(180deg, var(--panel), var(--panel-2));
   box-shadow: 0 16px 36px #00000035;
-  padding: 16px;
+  padding: 12px;
 }
 
 .beer-card-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 190px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 168px;
   grid-template-rows: auto auto auto;
-  gap: 12px;
+  gap: 8px 10px;
   align-items: end;
 }
 
@@ -165,10 +165,56 @@ body {
 .beer-fields input,
 .beer-fields select,
 .beer-input {
-  margin-top: 6px;
+  margin-top: 4px;
   width: 100%;
-  padding: 10px 10px;
-  font-size: 0.98rem;
+  padding: 8px 10px;
+  font-size: 0.95rem;
+}
+
+.field-brewery {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.field-title {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.field-pair {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.field-pair-left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.field-pair-right {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.field-style,
+.field-city {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.field-abv {
+  flex: 0 0 6ch;
+}
+
+.field-state {
+  flex: 0 0 4ch;
+}
+
+#abv,
+#state {
+  width: 100%;
 }
 
 .logo-cell {
@@ -180,42 +226,64 @@ body {
 }
 
 .logo-preview-square {
-  width: 160px;
-  height: 160px;
+  width: 142px;
+  height: 142px;
+  position: relative;
   border-radius: 14px;
   border: 1px solid #6c85a8;
   background: linear-gradient(180deg, #17283b, #122032);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   overflow: hidden;
+  cursor: pointer;
 }
 
 .logo-preview-square img {
-  max-width: 132px;
-  max-height: 132px;
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  max-width: 118px;
+  max-height: 118px;
   object-fit: contain;
-  border-radius: 8px;
+  filter: brightness(0) invert(1);
 }
 
-.logo-dropdown-under {
-  grid-row: 3;
-  grid-column: 3;
+.logo-preview-hint {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 80%;
+  font-family: "Orbitron", sans-serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #cfe1f8;
+  text-align: center;
+  opacity: 0.85;
+}
+
+.logo-picker-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 
 .beer-card-animation-area {
-  min-height: 200px;
-  margin: 16px 0;
+  min-height: 176px;
+  margin: 10px 0;
   border-radius: 12px;
   border: 1px solid #5d7594;
   background: #203c56;
-  padding: 8px;
+  padding: 6px;
 }
 
 #tapperAnim {
   width: 580px;
   max-width: 100%;
-  height: 200px;
+  height: 176px;
   image-rendering: pixelated;
   display: block;
   margin: 0 auto;
@@ -224,10 +292,10 @@ body {
 }
 
 .button-bar {
-  margin-top: 6px;
+  margin-top: 2px;
   display: flex;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
@@ -235,7 +303,7 @@ body {
 #saveAllBtn {
   border: 1px solid transparent;
   border-radius: 10px;
-  padding: 10px 16px;
+  padding: 8px 14px;
   cursor: pointer;
   font-family: "Orbitron", sans-serif;
   text-transform: uppercase;
@@ -268,8 +336,9 @@ body {
 
 .beer-table {
   display: none;
-  width: 100%;
-  margin-top: 10px;
+  width: max-content;
+  max-width: 100%;
+  margin: 6px auto 0;
   border-collapse: collapse;
   border-spacing: 0;
   background: #18283c;
@@ -284,21 +353,26 @@ body {
   font-family: "Orbitron", sans-serif;
   font-size: 0.74rem;
   letter-spacing: 0.06em;
-  padding: 10px 6px;
+  padding: 7px 6px;
   text-transform: uppercase;
   border-bottom: 1px solid #3f5c80;
 }
 
 .beer-table td {
   border-top: 1px solid #304a69;
-  padding: 7px 6px;
+  padding: 4px 5px;
 }
 
 .beer-input {
   width: 100%;
   margin: 0;
-  padding: 8px;
-  font-size: 0.93rem;
+  padding: 6px 8px;
+  font-size: 0.9rem;
+}
+
+.beer-city {
+  width: 12ch !important;
+  min-width: 12ch;
 }
 
 .beer-abv {
@@ -321,14 +395,14 @@ body {
   background: #b85d56;
   color: #fff;
   cursor: pointer;
-  padding: 6px 10px;
+  padding: 4px 8px;
   font-family: "Orbitron", sans-serif;
   font-size: 0.72rem;
 }
 
 #saveAllBtn {
   display: none;
-  margin: 14px auto 0;
+  margin: 8px auto 0;
   background: linear-gradient(180deg, #a9f0c4, #74c98e);
   color: #15251f;
   border-color: #9de4b8;
