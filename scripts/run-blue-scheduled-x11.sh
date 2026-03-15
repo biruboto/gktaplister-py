@@ -8,6 +8,10 @@ xset -dpms || true
 xset s off || true
 xset s noblank || true
 
+if command -v unclutter >/dev/null 2>&1; then
+  unclutter -idle 0 -root -grab >/dev/null 2>&1 &
+fi
+
 output_name="$(xrandr --query | awk '/ connected/{print $1; exit}')"
 if [[ -n "$output_name" ]]; then
   forced_rate=""

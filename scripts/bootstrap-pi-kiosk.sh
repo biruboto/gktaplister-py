@@ -17,6 +17,7 @@ sudo apt install -y --no-install-recommends \
   xinit \
   openbox \
   x11-xserver-utils \
+  unclutter \
   python3-pygame \
   python3-requests \
   librsvg2-bin
