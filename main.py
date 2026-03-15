@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pygame
 
-from battlefield_js_port import ArcadeBattlefield
+from systems.battle import ArcadeBattlefield
 from settings import SERVER_BASE
 from systems.fetch import fetch_meta, fetch_text, is_url
 from systems.logos import build_logo_cache
