@@ -394,7 +394,9 @@
 
       const [database, taplist] = await Promise.all([dbRes.json(), tapRes.json()]);
 
-      masterList = database.sort((a, b) => {
+      masterList = database
+        .filter((beer) => beer.archived !== true)
+        .sort((a, b) => {
         const nameA = `${a.brewery} ${a.title}`.toLowerCase();
         const nameB = `${b.brewery} ${b.title}`.toLowerCase();
         return nameA.localeCompare(nameB);

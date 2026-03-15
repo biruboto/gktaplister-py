@@ -334,11 +334,29 @@ body {
   filter: brightness(1.08);
 }
 
-.beer-table {
+.beer-table-wrap {
   display: none;
+  margin: 6px auto 0;
+}
+
+.beer-table-section + .beer-table-section {
+  margin-top: 18px;
+}
+
+.beer-table-title {
+  margin: 0 auto 6px;
+  width: max-content;
+  font-family: "Orbitron", sans-serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.beer-table {
   width: max-content;
   max-width: 100%;
-  margin: 6px auto 0;
+  margin: 0 auto;
   border-collapse: collapse;
   border-spacing: 0;
   background: #18283c;
@@ -361,6 +379,49 @@ body {
 .beer-table td {
   border-top: 1px solid #304a69;
   padding: 4px 5px;
+}
+
+.drag-col {
+  width: 40px;
+  text-align: center;
+}
+
+.drag-handle {
+  border: 1px solid #5c7291;
+  border-radius: 8px;
+  background: #122031;
+  color: #cfe1f8;
+  cursor: grab;
+  padding: 4px 7px;
+  font-family: "Orbitron", sans-serif;
+  font-size: 0.8rem;
+}
+
+.beer-row.dragging {
+  opacity: 0.45;
+}
+
+tbody.drop-target {
+  outline: 2px dashed #ffb869;
+  outline-offset: -3px;
+}
+
+.drop-placeholder-row td {
+  border-top: 1px dashed #44607f;
+}
+
+.drop-placeholder {
+  padding: 14px 10px;
+  text-align: center;
+  color: var(--muted);
+  font-family: "Orbitron", sans-serif;
+  font-size: 0.76rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.archived-row {
+  opacity: 0.86;
 }
 
 .beer-input {
