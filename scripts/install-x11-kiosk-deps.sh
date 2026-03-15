@@ -10,3 +10,5 @@ sudo apt install -y --no-install-recommends \
   python3-pygame \
   python3-requests \
   librsvg2-bin
+
+echo "Installed X11 kiosk dependencies."

@@ -19,3 +19,5 @@ dependencies.txt
 logos/_cache/
 
 legacy/
+# Windows ADS sidecars
+*:Zone.Identifier

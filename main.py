@@ -70,7 +70,7 @@ SHOW_FPS = _env_bool("GK_SHOW_FPS", True)
 USE_BUSY_LOOP = _env_bool("GK_USE_BUSY_LOOP", True)
 
 # Lux Raphael
-SIGIL_HEX = (
+SIGIL = (
     "52 61 70 68 61 65 6C 20 61 72 63 68 61 6E 67 65 6C 75 73 2C 20 63 75 73 74 "
     "6F 73 20 68 75 69 75 73 20 74 61 62 65 72 6E 61 65 20 65 73 74 6F 2E 20 44 "
     "61 20 73 61 6C 75 74 65 6D 2C 20 70 72 6F 73 70 65 72 69 74 61 74 65 6D 2C "
@@ -79,7 +79,6 @@ SIGIL_HEX = (
     "69 62 75 6E 74 2C 20 65 74 20 6C 75 64 75 6E 74 2E 20 4C 75 78 20 74 75 61 "
     "20 73 69 74 20 6E 6F 62 69 73 63 75 6D 20 73 65 6D 70 65 72 2E"
 )
-
 
 def urlify(path_or_url: str) -> str:
     if is_url(path_or_url):
@@ -288,7 +287,6 @@ def run(theme):
         last_seen_token = current_refresh_token
         last_seen_sig = current_taplist_sig
         last_seen_beerdb_sig = current_beerdb_sig
-        last_seen_tap_meta = source_meta(theme.json_path, POLL_TAPLIST_TIMEOUT_S)
         last_seen_beerdb_meta = source_meta(BEERDB_FILE, POLL_BEERDB_TIMEOUT_S)
         poll_errors = 0
         while not stop_poll.wait(TOKEN_POLL_SECONDS):
@@ -296,22 +294,19 @@ def run(theme):
                 tap_changed = False
                 beerdb_changed = False
 
-                current_tap_meta = source_meta(theme.json_path, POLL_TAPLIST_TIMEOUT_S)
-                if current_tap_meta is None or current_tap_meta != last_seen_tap_meta:
-                    latest_taplist = load_json(
-                        theme.json_path,
-                        ttl=0,
-                        timeout_s=POLL_TAPLIST_TIMEOUT_S,
-                        allow_stale_on_error=False,
-                    )
-                    latest_token = latest_taplist.get("refreshToken")
-                    latest_sig = taplist_signature(latest_taplist)
-                    last_seen_tap_meta = current_tap_meta
-                    if latest_token != last_seen_token or latest_sig != last_seen_sig:
-                        cached_taplist = latest_taplist
-                        last_seen_token = latest_token
-                        last_seen_sig = latest_sig
-                        tap_changed = True
+                latest_taplist = load_json(
+                    theme.json_path,
+                    ttl=0,
+                    timeout_s=POLL_TAPLIST_TIMEOUT_S,
+                    allow_stale_on_error=False,
+                )
+                latest_token = latest_taplist.get("refreshToken")
+                latest_sig = taplist_signature(latest_taplist)
+                if latest_token != last_seen_token or latest_sig != last_seen_sig:
+                    cached_taplist = latest_taplist
+                    last_seen_token = latest_token
+                    last_seen_sig = latest_sig
+                    tap_changed = True
 
                 current_beerdb_meta = source_meta(BEERDB_FILE, POLL_BEERDB_TIMEOUT_S)
                 if current_beerdb_meta is None or current_beerdb_meta != last_seen_beerdb_meta:
