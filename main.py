@@ -224,7 +224,8 @@ def run(theme):
     battle_h = max(360, int(height * BATTLEFIELD_RENDER_SCALE))
     battlefield = ArcadeBattlefield(battle_w, battle_h, bg_color=theme.bg_color)
     battlefield_surface = pygame.Surface((battle_w, battle_h)).convert()
-    debug_font = pygame.font.SysFont(None, 24) if SHOW_FPS else None
+    debug_font = pygame.font.SysFont(None, 24)
+    show_fps = SHOW_FPS
 
     if UI_USE_COLORKEY_CACHE:
         ui_static = pygame.Surface((width, height)).convert()
@@ -367,6 +368,9 @@ def run(theme):
                 elif event.key == pygame.K_F3:
                     draw_ui = not draw_ui
                     log_debug(f"[debug] draw_ui={draw_ui}")
+                elif event.key == pygame.K_f:
+                    show_fps = not show_fps
+                    log_debug(f"[debug] show_fps={show_fps}")
                 elif event.key == pygame.K_F12:
                     perf_logging = not perf_logging
                     log_debug(f"[debug] perf_logging={perf_logging}")
@@ -429,7 +433,7 @@ def run(theme):
                     screen.blit(ui_static, rect.topleft, rect)
             draw_taplist_overlay(screen)
 
-        if SHOW_FPS and debug_font is not None:
+        if show_fps:
             fps_text = debug_font.render(f"{clock.get_fps():.1f} FPS", True, (120, 255, 120))
             screen.blit(fps_text, (10, 8))
         t4 = time.perf_counter()

@@ -181,10 +181,7 @@ class NeonTextFX:
 
 
 def draw_taplist_overlay(screen):
-    if _HEADER_TEXT is None:
-        return
-    # Animate only the header glyphs each frame; everything else stays cached/static.
-    _HEADER_TEXT.draw_wave(screen, _HEADER_POS[0], _HEADER_POS[1])
+    return
 
 
 def get_font(size, font_path=None, fallback=None):
@@ -303,6 +300,16 @@ def draw_taplist_static(
         list_top = 160
 
     _HEADER_POS = (header_x, header_y)
+    if _HEADER_TEXT:
+        _HEADER_TEXT.draw_base(screen, header_x, header_y)
+        dirty_rects.append(
+            pygame.Rect(
+                header_x - _HEADER_TEXT.pad,
+                header_y - _HEADER_TEXT.pad,
+                _HEADER_TEXT.shadow.get_width(),
+                _HEADER_TEXT.shadow.get_height(),
+            )
+        )
     col_x = [20, screen_w // 2 + 16]
 
     for col in range(column_count):
