@@ -45,6 +45,26 @@ def hex_to_rgb(hexs: str):
     hexs = hexs.lstrip("#")
     return int(hexs[0:2], 16), int(hexs[2:4], 16), int(hexs[4:6], 16)
 
+
+def draw_pixel_block(screen, color, x, y, size):
+    size = max(1, int(size))
+    screen.fill(color, (int(x), int(y), size, size))
+
+
+def draw_pixel_trail(screen, color, x0, y0, x1, y1, size):
+    size = max(1, int(size))
+    dx = x1 - x0
+    dy = y1 - y0
+    steps = max(abs(dx), abs(dy)) // max(1, size) + 1
+    if steps <= 1:
+        draw_pixel_block(screen, color, x0 - size // 2, y0 - size // 2, size)
+        return
+    for i in range(steps + 1):
+        t = i / steps
+        px = int(round(x0 + dx * t)) - size // 2
+        py = int(round(y0 + dy * t)) - size // 2
+        draw_pixel_block(screen, color, px, py, size)
+
 # ---------- STARFIELD (layers, drift, opacity jitter) ----------
 class JSStarfield:
     def __init__(self, w, h, bg_color=(0,0,0)):
@@ -393,7 +413,7 @@ class JSBattle:
         self.particles = keep
 
     def _draw_particles(self, screen):
-        # Exhaust look: short streak (velocity direction) + hot core + cool halo.
+        # Pixel exhaust: stepped square trail + square core blocks.
         for p in self.particles:
             x, y = int(p["x"]), int(p["y"])
             if x < -16 or x > self.w + 16 or y < -16 or y > self.h + 16:
@@ -406,17 +426,20 @@ class JSBattle:
             if PI_PERF_MODE and not LEGACY_PARITY_MODE:
                 trail = (int(40 * a), int(120 * a), int(220 * a))
                 core = (int(150 * a), int(230 * a), int(255 * a))
-                pygame.draw.line(screen, trail, (x, y), (tx, ty), max(1, r_core // 2))
-                pygame.draw.circle(screen, core, (x, y), r_core, 0)
+                trail_size = max(1, r_core // 2)
+                draw_pixel_trail(screen, trail, x, y, tx, ty, trail_size)
+                draw_pixel_block(screen, core, x - r_core // 2, y - r_core // 2, r_core)
             else:
                 r_halo = max(r_core + 1, int(p["r"] * 1.8))
                 outer = (int(20 * a), int(90 * a), int(220 * a))
                 core = (int(170 * a), int(235 * a), int(255 * a))
                 hot = (int(255 * a), int(255 * a), int(220 * a))
-                pygame.draw.line(screen, outer, (x, y), (tx, ty), max(1, r_core // 2))
-                pygame.draw.circle(screen, outer, (x, y), r_halo, 0)
-                pygame.draw.circle(screen, core, (x, y), r_core, 0)
-                pygame.draw.circle(screen, hot, (x, y), max(1, r_core // 2), 0)
+                trail_size = max(1, r_core // 2)
+                draw_pixel_trail(screen, outer, x, y, tx, ty, trail_size)
+                draw_pixel_block(screen, outer, x - r_halo // 2, y - r_halo // 2, r_halo)
+                draw_pixel_block(screen, core, x - r_core // 2, y - r_core // 2, r_core)
+                hot_size = max(1, r_core // 2)
+                draw_pixel_block(screen, hot, x - hot_size // 2, y - hot_size // 2, hot_size)
 
     # ---- bullets ----
     def _fire_bullet_pair(self):
