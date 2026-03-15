@@ -225,10 +225,19 @@ body {
   justify-content: center;
 }
 
+.logo-picker-shell {
+  width: 142px;
+  height: 142px;
+  position: relative;
+}
+
 .logo-preview-square {
   width: 142px;
   height: 142px;
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 14px;
   border: 1px solid #6c85a8;
   background: linear-gradient(180deg, #17283b, #122032);
@@ -236,13 +245,12 @@ body {
   cursor: pointer;
 }
 
-.logo-preview-square img {
-  position: absolute;
-  inset: 0;
-  margin: auto;
-  max-width: 118px;
-  max-height: 118px;
-  object-fit: contain;
+.logo-preview-art {
+  width: 118px;
+  height: 118px;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-size: contain;
   filter: brightness(0) invert(1);
 }
 
@@ -266,9 +274,24 @@ body {
   inset: 0;
   width: 100%;
   height: 100%;
+  display: block;
   margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   opacity: 0;
   cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+.logo-picker-overlay:focus {
+  outline: none;
+  border: 0;
+  box-shadow: none;
 }
 
 .beer-card-animation-area {

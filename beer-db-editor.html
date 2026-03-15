@@ -29,9 +29,11 @@
       <input id="title" autocomplete="off">
     </label>
     <div class="logo-cell" rowspan="3">
-      <div class="logo-preview-square" id="logoPreviewTrigger" role="button" tabindex="0" aria-label="Choose logo">
-        <img id="logoPreview" src="" alt="Brewery logo" style="display:none;">
-        <span class="logo-preview-hint" id="logoPreviewHint">click to choose logo</span>
+      <div class="logo-picker-shell" id="logoPreviewTrigger">
+        <div class="logo-preview-square" role="button" tabindex="0" aria-label="Choose logo">
+          <div id="logoPreview" class="logo-preview-art" style="display:none;"></div>
+          <span class="logo-preview-hint" id="logoPreviewHint">click to choose logo</span>
+        </div>
         <select id="logoPath" class="logo-picker-overlay" aria-label="Choose logo"></select>
       </div>
     </div>
@@ -282,7 +284,7 @@ function showBlankBeerCard() {
   fields.forEach(f => {
     if (f === "logoPath") {
       populateLogoDropdown();
-      logoPreview.src = "";
+      logoPreview.style.backgroundImage = "";
       logoPreview.style.display = "none";
       logoPreviewHint.style.display = "";
     } else {
@@ -319,10 +321,11 @@ function fillBeerCard(idx) {
       populateLogoDropdown(beer[f]);
       // Show logo preview if present
       if (beer[f]) {
-        logoPreview.src = `/logos/${beer[f]}`;
-        logoPreview.style.display = "";
+        logoPreview.style.backgroundImage = `url("/logos/${beer[f]}")`;
+        logoPreview.style.display = "block";
         logoPreviewHint.style.display = "none";
       } else {
+        logoPreview.style.backgroundImage = "";
         logoPreview.style.display = "none";
         logoPreviewHint.style.display = "";
       }
@@ -338,8 +341,8 @@ function fillBeerCard(idx) {
 // Handle logo dropdown change (update preview)
 document.getElementById('logoPath').onchange = function() {
   const path = this.value;
-  logoPreview.src = path ? `/logos/${path.replace(/^.*[\\/]/, "")}` : "";
-  logoPreview.style.display = path ? "" : "none";
+  logoPreview.style.backgroundImage = path ? `url("/logos/${path.replace(/^.*[\\/]/, "")}")` : "";
+  logoPreview.style.display = path ? "block" : "none";
   logoPreviewHint.style.display = path ? "none" : "";
 };
 

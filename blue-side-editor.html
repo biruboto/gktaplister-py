@@ -101,14 +101,23 @@
       min-width: 0;
       border-radius: 10px;
       border: 1px solid #45628d;
-      padding: 11px 44px 11px 10px;
+      padding: 11px 52px 11px 10px;
       font-size: 0.99rem;
       font-family: "MagistralBold", sans-serif;
       color: #edf3ff;
-      background:
-        linear-gradient(180deg, #0e1728, #091120),
-        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>") no-repeat right 12px center / 16px 16px;
+      background-image:
+        linear-gradient(45deg, transparent 50%, #edf3ff 50%),
+        linear-gradient(135deg, #edf3ff 50%, transparent 50%),
+        linear-gradient(180deg, #0e1728, #091120);
+      background-repeat: no-repeat, no-repeat, no-repeat;
+      background-position:
+        calc(100% - 20px) calc(50% - 3px),
+        calc(100% - 14px) calc(50% - 3px),
+        0 0;
+      background-size: 6px 6px, 6px 6px, auto;
       appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
       outline: none;
     }
 
@@ -128,16 +137,16 @@
       flex-direction: column;
       align-items: flex-start;
       justify-content: flex-start;
-      gap: 6px;
+      gap: 4px;
       color: #c5d6f8;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       white-space: nowrap;
     }
 
     .switch {
       position: relative;
-      width: 52px;
-      height: 30px;
+      width: 48px;
+      height: 24px;
       flex: 0 0 auto;
     }
 
@@ -160,11 +169,11 @@
     .slider::before {
       content: "";
       position: absolute;
-      width: 22px;
-      height: 22px;
+      width: 18px;
+      height: 18px;
       border-radius: 50%;
-      left: 3px;
-      top: 3px;
+      left: 2px;
+      top: 2px;
       background: #dfe9ff;
       transition: transform 140ms ease;
     }
@@ -175,7 +184,7 @@
     }
 
     .switch input:checked + .slider::before {
-      transform: translateX(22px);
+      transform: translateX(24px);
       background: #0a1527;
     }
 
