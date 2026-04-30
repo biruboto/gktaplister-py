@@ -11,6 +11,10 @@ _HEADER_THEME = None
 _HEADER_POS = (62, 30)
 
 
+def _scaled(value, scale, minimum=1):
+    return max(minimum, int(round(value * scale)))
+
+
 class NeonTextFX:
     def __init__(
         self,
@@ -233,13 +237,38 @@ def draw_taplist_static(
     panel_color=(0, 0, 0),
     panel_border=(80, 80, 80),
 ):
-    logo_size = theme.logo_size
-    card_height = 130
-    row_padding = 18
     column_count = 2
-    logo_margin = 0
     accent = theme.accent
     dirty_rects = []
+    rows = max(1, (len(beers) + 1) // column_count)
+
+    base_card_height = 130
+    base_row_padding = 18
+    base_header_gap = 20 if theme.name == "blue" else 10
+    base_header_font_size = 220
+    base_min_header_font_size = 88
+    base_header_y = -2
+    base_list_top = 160
+    base_layout_h = base_list_top + rows * base_card_height + max(0, rows - 1) * base_row_padding
+
+    if screen_h < base_layout_h:
+        layout_scale = max(0.52, screen_h / float(base_layout_h))
+    else:
+        layout_scale = 1.0
+
+    logo_size = min(theme.logo_size, _scaled(theme.logo_size, layout_scale, 64))
+    card_height = _scaled(base_card_height, layout_scale, 72)
+    row_padding = _scaled(base_row_padding, layout_scale, 8)
+    logo_margin = 0
+    header_gap = _scaled(base_header_gap, layout_scale, 8)
+    header_start_size = _scaled(base_header_font_size, layout_scale, 96)
+    header_min_size = _scaled(base_min_header_font_size, layout_scale, 46)
+    name_start_size = _scaled(72, layout_scale, 36)
+    name_min_size = _scaled(22, layout_scale, 14)
+    info_start_size = _scaled(32, layout_scale, 18)
+    info_min_size = _scaled(12, layout_scale, 9)
+    text_gap = _scaled(15, layout_scale, 8)
+    text_logo_gap = _scaled(22, layout_scale, 12)
 
     global _HEADER_TEXT, _HEADER_THEME
     global _HEADER_POS
@@ -247,9 +276,16 @@ def draw_taplist_static(
     hf_path = header_font_path or beer_font_path
     max_header_w = screen_w - 20
 
-    if _HEADER_TEXT is None or _HEADER_THEME != (theme.name, hf_path):
+    header_cache_key = (theme.name, hf_path, screen_w, round(layout_scale, 3))
+    if _HEADER_TEXT is None or _HEADER_THEME != header_cache_key:
         try:
-            header_font = get_fitting_font("TAP LIST", max_header_w, hf_path, start_size=220, min_size=88)
+            header_font = get_fitting_font(
+                "TAP LIST",
+                max_header_w,
+                hf_path,
+                start_size=header_start_size,
+                min_size=header_min_size,
+            )
             _HEADER_TEXT = NeonTextFX(
                 font=header_font,
                 text="TAP LIST",
@@ -269,7 +305,7 @@ def draw_taplist_static(
                 extrusion_px=0,
                 pair_kerning={"TA": -16},
             )
-            _HEADER_THEME = (theme.name, hf_path)
+            _HEADER_THEME = header_cache_key
         except Exception as exc:
             print("Header text init failed:", exc)
             _HEADER_TEXT = None
@@ -278,15 +314,19 @@ def draw_taplist_static(
         header_x = (screen_w - _HEADER_TEXT.base.get_width()) // 2
         header_h = _HEADER_TEXT.base.get_height()
     else:
-        header_font = get_fitting_font("TAP LIST", max_header_w, hf_path, start_size=220, min_size=88)
+        header_font = get_fitting_font(
+            "TAP LIST",
+            max_header_w,
+            hf_path,
+            start_size=header_start_size,
+            min_size=header_min_size,
+        )
         header_w = header_font.size("TAP LIST")[0]
         header_x = (screen_w - header_w) // 2
         header_h = header_font.get_height()
 
-    rows = (len(beers) + 1) // 2
     if theme.name == "blue":
         list_h = rows * card_height + max(0, rows - 1) * row_padding
-        header_gap = 20
         block_h = header_h + header_gap + list_h
         try:
             blue_block_offset = int(os.getenv("GK_BLUE_BLOCK_Y_OFFSET", "0"))
@@ -296,8 +336,8 @@ def draw_taplist_static(
         header_y = block_top
         list_top = header_y + header_h + header_gap
     else:
-        header_y = -2
-        list_top = 160
+        header_y = _scaled(base_header_y, layout_scale, -2)
+        list_top = _scaled(base_list_top, layout_scale, 88)
 
     _HEADER_POS = (header_x, header_y)
     if _HEADER_TEXT:
@@ -336,6 +376,13 @@ def draw_taplist_static(
             logo_box_rect = pygame.Rect(logo_box_x, logo_box_y, logo_size, logo_size)
 
             if surf:
+                if surf.get_width() > logo_size or surf.get_height() > logo_size:
+                    ratio = min(logo_size / surf.get_width(), logo_size / surf.get_height())
+                    scaled_size = (
+                        max(1, int(round(surf.get_width() * ratio))),
+                        max(1, int(round(surf.get_height() * ratio))),
+                    )
+                    surf = pygame.transform.smoothscale(surf, scaled_size)
                 logo_rect = surf.get_rect(center=logo_box_rect.center)
                 screen.blit(surf, logo_rect)
                 dirty_rects.append(logo_rect.copy())
@@ -343,15 +390,21 @@ def draw_taplist_static(
                 draw_logo_placeholder(screen, logo_box_x, logo_box_y, logo_size, accent)
                 dirty_rects.append(logo_box_rect.copy())
 
-            x_text = left + logo_margin + logo_size + 22
-            spacing = 15
-            max_text_width = (screen_w // 2 - 36) - (logo_margin + logo_size + 22) - 18
+            x_text = left + logo_margin + logo_size + text_logo_gap
+            spacing = text_gap
+            max_text_width = (screen_w // 2 - 36) - (logo_margin + logo_size + text_logo_gap) - 18
 
             brewery = beer["brewery"].upper()
             title = beer["title"].upper()
             full_name = f"{brewery} {title}"
 
-            name_font = get_fitting_font(full_name, max_text_width, beer_font_path, start_size=72, min_size=22)
+            name_font = get_fitting_font(
+                full_name,
+                max_text_width,
+                beer_font_path,
+                start_size=name_start_size,
+                min_size=name_min_size,
+            )
 
             sold_out = beer.get("soldOut", False)
             info_line = (
@@ -364,8 +417,8 @@ def draw_taplist_static(
                 info_line,
                 max_text_width,
                 info_font_path,
-                start_size=32,
-                min_size=12,
+                start_size=info_start_size,
+                min_size=info_min_size,
             )
 
             brewery_color = desaturate_color(theme.text_brewery) if sold_out else theme.text_brewery
