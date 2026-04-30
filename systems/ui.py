@@ -264,6 +264,8 @@ def draw_taplist_static(
     logo_size = min(theme.logo_size, _scaled(theme.logo_size, logo_scale, 56))
     card_height = _scaled(base_card_height, layout_scale, 72)
     row_padding = _scaled(base_row_padding, layout_scale, 8)
+    if theme.name == "blue" and screen_h <= 720:
+        card_height = max(62, card_height - 10)
     logo_margin = 0
     header_gap = _scaled(base_header_gap, layout_scale, 8)
     header_start_size = _scaled(base_header_font_size, layout_scale, 96)
