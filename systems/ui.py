@@ -251,12 +251,17 @@ def draw_taplist_static(
     base_list_top = 160
     base_layout_h = base_list_top + rows * base_card_height + max(0, rows - 1) * base_row_padding
 
+    width_scale = min(1.0, screen_w / 1920.0)
     if screen_h < base_layout_h:
-        layout_scale = max(0.52, screen_h / float(base_layout_h))
+        layout_scale = max(0.52, min(width_scale, screen_h / float(base_layout_h)))
     else:
-        layout_scale = 1.0
+        layout_scale = width_scale
 
-    logo_size = min(theme.logo_size, _scaled(theme.logo_size, layout_scale, 64))
+    logo_scale = layout_scale
+    if screen_w < 1600:
+        logo_scale *= 0.82
+
+    logo_size = min(theme.logo_size, _scaled(theme.logo_size, logo_scale, 56))
     card_height = _scaled(base_card_height, layout_scale, 72)
     row_padding = _scaled(base_row_padding, layout_scale, 8)
     logo_margin = 0
