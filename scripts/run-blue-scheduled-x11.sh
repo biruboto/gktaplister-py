@@ -14,24 +14,33 @@ fi
 
 output_name="$(xrandr --query | awk '/ connected/{print $1; exit}')"
 if [[ -n "$output_name" ]]; then
-  forced_rate=""
-  if xrandr --query | awk -v out="$output_name" '
-    $1==out && $2=="connected" {in_output=1; next}
-    in_output && $1 !~ /^ / {in_output=0}
-    in_output && $1=="1920x1080" && $0 ~ /(^|[[:space:]])50(\.00)?([*+ ]|$)/ {found=1}
-    END {exit !found}
-  '; then
-    if xrandr --output "$output_name" --mode 1920x1080 --rate 50; then
-      forced_rate="50"
-    fi
-  fi
+  set_display_mode() {
+    local mode="$1"
+    local preferred_rate="$2"
+    local rate=""
 
-  if [[ -z "$forced_rate" ]]; then
-    best_rate="$(
-      xrandr --query | awk -v out="$output_name" '
+    if [[ -n "$preferred_rate" ]] && xrandr --query | awk -v out="$output_name" -v mode="$mode" -v rate="$preferred_rate" '
+      $1==out && $2=="connected" {in_output=1; next}
+      in_output && $1 !~ /^ / {in_output=0}
+      in_output && $1==mode {
+        for (i=2; i<=NF; i++) {
+          r=$i
+          gsub(/[^0-9.]/, "", r)
+          if (r == rate || r == rate ".00") found=1
+        }
+      }
+      END {exit !found}
+    '; then
+      if xrandr --output "$output_name" --mode "$mode" --rate "$preferred_rate"; then
+        return 0
+      fi
+    fi
+
+    rate="$(
+      xrandr --query | awk -v out="$output_name" -v mode="$mode" '
         $1==out && $2=="connected" {in_output=1; next}
         in_output && $1 !~ /^ / {in_output=0}
-        in_output && $1=="1920x1080" {
+        in_output && $1==mode {
           for (i=2; i<=NF; i++) {
             r=$i
             gsub(/[^0-9.]/, "", r)
@@ -41,10 +50,15 @@ if [[ -n "$output_name" ]]; then
         END { if (best != "") print best }
       '
     )"
-    if [[ -n "$best_rate" ]]; then
-      xrandr --output "$output_name" --mode 1920x1080 --rate "$best_rate" || true
+    if [[ -n "$rate" ]]; then
+      xrandr --output "$output_name" --mode "$mode" --rate "$rate"
+      return $?
     fi
-  fi
+
+    return 1
+  }
+
+  set_display_mode 1920x1080 50 || set_display_mode 1280x720 60 || true
 fi
 
 export GK_ALLOW_ESCAPE=0
