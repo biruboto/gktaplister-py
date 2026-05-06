@@ -23,9 +23,20 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
+def _env_float(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return float(raw.strip())
+    except Exception:
+        return default
+
+
 TARGET_FPS = max(0, _env_int("GK_GAMEOVER_FPS", 60))
 ALLOW_ESCAPE = _env_bool("GK_ALLOW_ESCAPE", True)
 USE_VSYNC = _env_bool("GK_USE_VSYNC", False)
+LAYOUT_SCALE_OVERRIDE = max(0.25, _env_float("GK_GAMEOVER_LAYOUT_SCALE", 1.0))
 SPRITES_DIR = Path("sprites")
 IMAGES_DIR = Path("images")
 FONTS_DIR = Path("fonts")
@@ -168,8 +179,18 @@ def build_integer_scaled_fixed(sprite, scale: int = 2):
         return None
     src_w = max(1, sprite.get_width())
     src_h = max(1, sprite.get_height())
-    scale = max(1, int(scale))
-    return pygame.transform.scale(sprite, (src_w * scale, src_h * scale))
+    scale = max(0.1, float(scale))
+    return pygame.transform.scale(
+        sprite,
+        (
+            max(1, int(round(src_w * scale))),
+            max(1, int(round(src_h * scale))),
+        ),
+    )
+
+
+def scale_px(value: float, scale: float, minimum: int = 1) -> int:
+    return max(minimum, int(round(value * scale)))
 
 
 def draw_wavy_sprite(
@@ -292,6 +313,8 @@ def main():
 
     width, height = screen.get_size()
     clock = pygame.time.Clock()
+    layout_scale = min(1.0, width / 1920.0, height / 1080.0) * LAYOUT_SCALE_OVERRIDE
+    layout_scale = max(0.45, min(1.0, layout_scale))
 
     bg = load_sprite(BG_FILE)
     bg_scaled = build_background_surface(bg, width, height)
@@ -314,11 +337,11 @@ def main():
         urf_end_y = 0
         urf_rise_seconds = 140.0
 
-    astro_left = build_integer_scaled_fixed(load_sprite(ASTRO_LEFT_FILE), scale=4)
-    astro_right = build_integer_scaled_fixed(load_sprite(ASTRO_RIGHT_FILE), scale=4)
-    gk_logo = build_integer_scaled_fixed(load_image_sprite(GK_LOGO_FILE), scale=3)
-    game_over_font_size = 160
-    subtitle_font_size = 64
+    astro_left = build_integer_scaled_fixed(load_sprite(ASTRO_LEFT_FILE), scale=4.0 * layout_scale)
+    astro_right = build_integer_scaled_fixed(load_sprite(ASTRO_RIGHT_FILE), scale=4.0 * layout_scale)
+    gk_logo = build_integer_scaled_fixed(load_image_sprite(GK_LOGO_FILE), scale=3.0 * layout_scale)
+    game_over_font_size = scale_px(160, layout_scale, 72)
+    subtitle_font_size = scale_px(64, layout_scale, 30)
     game_over_font = load_font(GAME_OVER_FONT_FILE, game_over_font_size)
     game_over_glyphs = build_title_glyphs(game_over_font, "GAME OVER", (255, 255, 255))
     subtitle_font = load_font(SUBTITLE_FONT_FILE, subtitle_font_size)
@@ -364,6 +387,10 @@ def main():
             astro_right.set_alpha(astro_alpha)
         margin_x = max(12, int(width * 0.018))
         margin_y = max(8, int(height * 0.02))
+        wave_amp = 4.0 * layout_scale
+        wave_length = max(8.0, 20.0 * layout_scale)
+        wave_bob = 2.0 * layout_scale
+        wave_row_step = scale_px(4, layout_scale, 2)
         if astro_left is not None:
             draw_wavy_sprite(
                 screen,
@@ -372,11 +399,11 @@ def main():
                 height - astro_left.get_height() - margin_y,
                 t,
                 phase=0.0,
-                amp_px=4.0,
-                wavelength_px=20.0,
+                amp_px=wave_amp,
+                wavelength_px=wave_length,
                 speed=0.9,
-                bob_px=2.0,
-                row_step=4,
+                bob_px=wave_bob,
+                row_step=wave_row_step,
             )
         if astro_right is not None:
             draw_wavy_sprite(
@@ -386,11 +413,11 @@ def main():
                 height - astro_right.get_height() - margin_y,
                 t,
                 phase=1.9,
-                amp_px=4.0,
-                wavelength_px=20.0,
+                amp_px=wave_amp,
+                wavelength_px=wave_length,
                 speed=1.0,
-                bob_px=2.0,
-                row_step=4,
+                bob_px=wave_bob,
+                row_step=wave_row_step,
             )
         if urf_scaled is not None:
             progress = min(1.0, t / urf_rise_seconds)
@@ -399,18 +426,36 @@ def main():
             screen.blit(urf_scaled, (urf_x, int(urf_y)))
         if gk_logo is not None:
             logo_x = (width - gk_logo.get_width()) // 2
-            logo_y = 100
+            logo_y = scale_px(100, layout_scale, 36)
             screen.blit(gk_logo, (logo_x, logo_y))
         title_spacing = max(1, game_over_font_size // BITMAP_NATIVE_PX)
         title_width = calc_glyph_run_width(game_over_glyphs, title_spacing)
         text_x = (width - title_width) // 2
-        text_y = 330
-        draw_pulse_wave_text(screen, game_over_glyphs, text_x, text_y, t, spacing=title_spacing)
+        text_y = scale_px(330, layout_scale, 150)
+        draw_pulse_wave_text(
+            screen,
+            game_over_glyphs,
+            text_x,
+            text_y,
+            t,
+            spacing=title_spacing,
+            float_px=5.0 * layout_scale,
+            pulse_px=34.0 * layout_scale,
+        )
         subtitle_spacing = max(1, subtitle_font_size // BITMAP_NATIVE_PX)
         subtitle_width = calc_glyph_run_width(subtitle_glyphs, subtitle_spacing)
         subtitle_x = (width - subtitle_width) // 2
-        subtitle_y = 500
-        draw_float_text(screen, subtitle_glyphs, subtitle_x, subtitle_y, t, spacing=subtitle_spacing, float_px=4.0, float_speed=1.0)
+        subtitle_y = scale_px(500, layout_scale, 230)
+        draw_float_text(
+            screen,
+            subtitle_glyphs,
+            subtitle_x,
+            subtitle_y,
+            t,
+            spacing=subtitle_spacing,
+            float_px=4.0 * layout_scale,
+            float_speed=1.0,
+        )
 
         pygame.display.flip()
 
