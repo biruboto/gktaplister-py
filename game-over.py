@@ -37,6 +37,7 @@ TARGET_FPS = max(0, _env_int("GK_GAMEOVER_FPS", 60))
 ALLOW_ESCAPE = _env_bool("GK_ALLOW_ESCAPE", True)
 USE_VSYNC = _env_bool("GK_USE_VSYNC", False)
 LAYOUT_SCALE_OVERRIDE = max(0.25, _env_float("GK_GAMEOVER_LAYOUT_SCALE", 1.0))
+TEXT_Y_OFFSET = _env_int("GK_GAMEOVER_TEXT_Y_OFFSET", 30)
 SPRITES_DIR = Path("sprites")
 IMAGES_DIR = Path("images")
 FONTS_DIR = Path("fonts")
@@ -315,6 +316,7 @@ def main():
     clock = pygame.time.Clock()
     layout_scale = min(1.0, width / 1920.0, height / 1080.0) * LAYOUT_SCALE_OVERRIDE
     layout_scale = max(0.45, min(1.0, layout_scale))
+    text_y_offset = scale_px(TEXT_Y_OFFSET, layout_scale, 0)
 
     bg = load_sprite(BG_FILE)
     bg_scaled = build_background_surface(bg, width, height)
@@ -426,12 +428,12 @@ def main():
             screen.blit(urf_scaled, (urf_x, int(urf_y)))
         if gk_logo is not None:
             logo_x = (width - gk_logo.get_width()) // 2
-            logo_y = scale_px(100, layout_scale, 36)
+            logo_y = scale_px(100, layout_scale, 36) + text_y_offset
             screen.blit(gk_logo, (logo_x, logo_y))
         title_spacing = max(1, game_over_font_size // BITMAP_NATIVE_PX)
         title_width = calc_glyph_run_width(game_over_glyphs, title_spacing)
         text_x = (width - title_width) // 2
-        text_y = scale_px(330, layout_scale, 150)
+        text_y = scale_px(330, layout_scale, 150) + text_y_offset
         draw_pulse_wave_text(
             screen,
             game_over_glyphs,
@@ -445,7 +447,7 @@ def main():
         subtitle_spacing = max(1, subtitle_font_size // BITMAP_NATIVE_PX)
         subtitle_width = calc_glyph_run_width(subtitle_glyphs, subtitle_spacing)
         subtitle_x = (width - subtitle_width) // 2
-        subtitle_y = scale_px(500, layout_scale, 230)
+        subtitle_y = scale_px(500, layout_scale, 230) + text_y_offset
         draw_float_text(
             screen,
             subtitle_glyphs,
