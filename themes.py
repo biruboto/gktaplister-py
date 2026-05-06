@@ -20,8 +20,8 @@ RED = Theme(
     dim_white=(180, 180, 180),
     logo_size=130,
     json_path="json/red-beers.json",
-    text_brewery=(216, 88, 102),
-    text_beer=(112, 24, 39),
+    text_brewery=(112, 24, 39),
+    text_beer=(216, 88, 102),
     text_info=(221, 186, 186),
 )
 
@@ -33,7 +33,7 @@ BLUE = Theme(
     dim_white=(190, 200, 220),
     logo_size=130,
     json_path="json/blue-beers.json",
-    text_brewery=(80, 140, 155),
-    text_beer=(19, 75, 112),
+    text_brewery=(19, 75, 112),
+    text_beer=(80, 140, 155),
     text_info=(206, 216, 235),
 )
