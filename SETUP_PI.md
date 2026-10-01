@@ -64,6 +64,33 @@ Use `blue` instead of `red` on the blue-side Pi.
 sudo reboot
 ```
 
+## Mirroring The Schedule To An Existing Blue Pi
+
+This setup does not use normal `cron` entries. The Pi boots into `tty1`,
+autologins, starts X11, and runs the long-lived scheduler.
+
+On the blue-side Pi, run:
+
+```bash
+cd ~/gktaplister-py
+./scripts/bootstrap-pi-kiosk.sh blue
+sudo reboot
+```
+
+If packages are already installed and only the autostart hook needs to be
+re-applied, this shorter command is enough:
+
+```bash
+cd ~/gktaplister-py
+./scripts/install-blue-x11-autostart.sh
+sudo reboot
+```
+
+After reboot, blue should write schedule logs to:
+
+- `~/gktaplister-py/logs/blue-scheduler.log`
+- `~/gktaplister-py/logs/blue-kiosk.log`
+
 ## What The Bootstrap Script Configures
 
 - Installs system packages
@@ -85,9 +112,30 @@ These are currently supplied through environment variables in:
 - `scripts/run-red-scheduled-x11.sh`
 - `scripts/run-blue-scheduled-x11.sh`
 
+To update those defaults without hand-editing the runner scripts, use the
+interactive setup helper:
+
+```bash
+cd ~/gktaplister-py
+bash scripts/set-kiosk-schedule.sh
+```
+
+It asks whether to update red, blue, or both, then asks for the taplist on
+time, Game Over time, and sleep time. Enter all times as 24-hour `HH:MM`
+values.
+
+For a one-line update, pass all values directly:
+
+```bash
+bash scripts/set-kiosk-schedule.sh blue 11:30 23:30 00:15
+```
+
+Reboot the Pi or restart the kiosk session after changing the defaults.
+
 ## Relevant Scripts
 
 - `scripts/bootstrap-pi-kiosk.sh`
+- `scripts/set-kiosk-schedule.sh`
 - `scripts/install-red-x11-autostart.sh`
 - `scripts/install-blue-x11-autostart.sh`
 - `scripts/start-red-scheduled-x11.sh`
