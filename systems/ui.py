@@ -332,19 +332,21 @@ def draw_taplist_static(
         header_x = (screen_w - header_w) // 2
         header_h = header_font.get_height()
 
+    list_h = rows * card_height + max(0, rows - 1) * row_padding
+    block_h = header_h + header_gap + list_h
     if theme.name == "blue":
-        list_h = rows * card_height + max(0, rows - 1) * row_padding
-        block_h = header_h + header_gap + list_h
         try:
-            blue_block_offset = int(os.getenv("GK_BLUE_BLOCK_Y_OFFSET", "0"))
+            block_offset = int(os.getenv("GK_BLUE_BLOCK_Y_OFFSET", "0"))
         except Exception:
-            blue_block_offset = 0
-        block_top = max(0, (screen_h - block_h) // 2 + blue_block_offset)
-        header_y = block_top
-        list_top = header_y + header_h + header_gap
+            block_offset = 0
     else:
-        header_y = _scaled(base_header_y, layout_scale, -2)
-        list_top = _scaled(base_list_top, layout_scale, 88)
+        try:
+            block_offset = int(os.getenv(f"GK_{theme.name.upper()}_BLOCK_Y_OFFSET", "0"))
+        except Exception:
+            block_offset = 0
+    block_top = max(0, (screen_h - block_h) // 2 + block_offset)
+    header_y = block_top
+    list_top = header_y + header_h + header_gap
 
     _HEADER_POS = (header_x, header_y)
     if _HEADER_TEXT:

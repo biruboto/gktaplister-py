@@ -268,6 +268,7 @@ def run(theme):
     log_debug(
         "[debug] "
         f"vsync={USE_VSYNC} target_fps={TARGET_FPS} "
+        f"screen={width}x{height} "
         f"render_scale={BATTLEFIELD_RENDER_SCALE:.2f} "
         f"token_poll_s={TOKEN_POLL_SECONDS:.2f} "
         f"poll_taplist_timeout_s={POLL_TAPLIST_TIMEOUT_S:.2f} "
